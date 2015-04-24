@@ -55,38 +55,6 @@ void cache_to_disk (struct cache_elem *ce);
 void pre_read_cache (void *aux);
 
 void cache_buf_init (void) {
-	/* Allocate full cache */
-	// c_base = palloc_get_multiple(PAL_ZERO|PAL_ASSERT, BUF_SIZE_PAGE);
-	// /* Init bitmap to track cache usage */
- //    c_map = bitmap_create(BUF_SIZE_BLOCK);
-	// /* Lock to operate on cache */
-	// lock_init(&c_map_lock);
-	// lock_init(&c_lock);
-	// cond_init(&cond_pin);
-	// /* Init hash table of cache contents */
-	// hash_init(&buf_ht, cache_hash_fun, cache_elem_cmp, NULL);
-	// /* Init hash table of for eviction algo */
-	// hash_init(&evic_buf_ht, evic_cache_hash_fun, evic_cache_elem_cmp, NULL);
-	// buf_clock_curr = buf_clock_min = c_base;
-	// buf_clock_max = c_base + (BUF_SIZE_BLOCK - 1) * BLOCK_SECTOR_SIZE;
-
-
-	// /* Thread that periodically writes back to disk */
-	// ch_teminate = false;
-	// ch_begin = true;
-
-	// lock_init(&pre_read_lock);
-	// pre_read_lock_ptr = &pre_read_lock;
-	// cond_init(&pre_read_cond);
-	// pre_read_cond_ptr = &pre_read_cond;
-	// list_init(&pre_read_que);
-
-	// /* Create read-ahead thread pool */
-	// int i = PRE_READ_POOL;
-	// while (i != 0) {
-	// 	thread_create("pre_read_" + i, PRI_DEFAULT, pre_read_cache, NULL);
-	// 	i--;
-	// }
 
 	c_base = palloc_get_multiple(PAL_ZERO|PAL_ASSERT, BUF_SIZE_PAGE);
 	c_map = bitmap_create(BUF_SIZE_BLOCK);
@@ -148,14 +116,6 @@ void pre_read_cache (void *aux UNUSED) {
 	 while (!ch_teminate) {
 		 struct list_elem *e = NULL;
 		 lock_acquire(&pre_read_lock);
-		 // do {
-			//  if (!list_empty(&pre_read_que)) {
-			// 	e = list_pop_front(&pre_read_que);
-			//  }
-			//  else {
-			// 	cond_wait(&pre_read_cond, &pre_read_lock);
-			//  }
-		 // } while (e == NULL);
 		 while (!e){
 		 	if (list_empty(&pre_read_que)){
 		 		cond_wait(&pre_read_cond, &pre_read_lock);	
@@ -175,12 +135,6 @@ void pre_read_cache (void *aux UNUSED) {
 		 	lock_release(&c_lock);
 		 	continue;
 		 }
-		 // if (ce != NULL) {
-
-			//  lock_release(&c_lock);
-			//  /* Late read-ahead.. Stop */
-			//  continue;
-		 // }
 		 lock_release(&c_lock);
 
 		 /* Not in cache */
@@ -194,16 +148,9 @@ buf_to_cache (block_sector_t sec_id, const void *buffer,
  /* Lookup and pin cache entry - c_lock */
 	lock_acquire(&c_lock);
 	struct cache_elem *ce = find_cache_elem(sec_id);
-	// if (ce != NULL) {
-	// 	ce->pin_cnt++;
-	// }
 	if (ce) ce->pin_cnt++;
 	lock_release(&c_lock);
 
-	/* Entry not found - add a new one */
-	// if (ce == NULL) {
-	// 	ce = load_sec_to_cache(sec_id, /* is readahead */ false);
-	// }
 	if (!ce)
 		ce = load_sec_to_cache(sec_id, false);
 
@@ -234,13 +181,6 @@ struct cache_elem *load_sec_to_cache (block_sector_t sector, bool isPreRead)
   /* Find and mark place in cache map - c_map_lock*/
   lock_acquire(&c_map_lock);
   size_t index = bitmap_scan (c_map, 0, 1, false);
-  // if (index == BITMAP_ERROR) {
-	 //  /* No free space - evict and load_sec_to_cache */
-	 //  lock_release(&c_map_lock);
-	 //  return load_sec_to_cache_after_evic(sector, isPreRead);
-  // }
-  // bitmap_set (c_map, index, true);
-  // lock_release(&c_map_lock);
   if (index != BITMAP_ERROR){
 	bitmap_set (c_map, index, true);
   	lock_release(&c_map_lock);
@@ -263,20 +203,6 @@ struct cache_elem *load_sec_to_cache (block_sector_t sector, bool isPreRead)
   /* Add into cache contents - c_lock*/
   lock_acquire(&c_lock);
   struct cache_elem *ce_ = find_cache_elem(sector);
- //  if (ce_ == NULL) {
-	// ce->pin_cnt += isPreRead ? 0 : 1;
-	// ce->isUsed = true;
-	// hash_insert(&buf_ht, &ce->buf_hash_elem);
-	// hash_insert(&evic_buf_ht, &ce->evic_buf_hash_elem);
- //  }
- //  else {
-	// ce_->pin_cnt += isPreRead ? 0 : 1;
-	// ce_->isUsed = true;
-	// lock_acquire(&c_map_lock);
-	// bitmap_set (c_map, index, false);
-	// lock_release(&c_map_lock);
-	// free(ce);
- //  }
   if (ce_){
   	// ce_->pin_cnt += isPreRead ? 0 : 1;
   	if (!isPreRead) ce_->pin_cnt++;
@@ -319,20 +245,6 @@ struct cache_elem *load_sec_to_cache_after_evic (block_sector_t sector, bool isP
 	/* Add entry to cache */
 	lock_acquire(&c_lock);
 	struct cache_elem *ce_ = find_cache_elem(sector);
-	// if (ce_ == NULL) {
-	// 	ce->pin_cnt += isPreRead ? 0 : 1;
-	// 	ce->isUsed = true;
-	// 	hash_insert(&buf_ht, &ce->buf_hash_elem);
-	// 	hash_insert(&evic_buf_ht, &ce->evic_buf_hash_elem);
-	// }
-	// else {
-	// 	ce_->pin_cnt += isPreRead ? 0 : 1;
-	// 	ce_->isUsed = true;
-	// 	lock_acquire(&c_map_lock);
-	// 	bitmap_set(c_map, (ce->ch_addr -c_base)/BLOCK_SECTOR_SIZE, false);
-	// 	lock_release(&c_map_lock);
-	// 	free(ce);
-	// }
 	if (ce_){
 		// ce_->pin_cnt += isPreRead ? 0 : 1;
 		if(!isPreRead) ce_->pin_cnt++;
@@ -369,20 +281,6 @@ void cache_to_disk (struct cache_elem *ce) {
 
 void thread_cache_to_disk (void) {
   while(true) {
-	// if (ch_begin) {
-	// 	lock_acquire(&c_lock);
-	// 	if (ch_teminate) {
-	// 		lock_release(&c_lock);
-	// 		break;
-	// 	}
-
-	// 	lock_release(&c_lock);
-	// 	all_cache_to_disk(/* Exiting */ false);
-	// 	thread_sleep(SLEEP_AFTER);
-	// }
-	// else {
-	// 	thread_sleep(SLEEP_BEFORE);
-	// }
 	if (!ch_begin){
 		thread_sleep(SLEEP_BEFORE);
 	}
@@ -424,53 +322,12 @@ struct cache_elem *pick_ce (void) {
 	while (ce_fst_clrd == NULL && ce_fst_clrd_dirty == NULL) {
 		void *start = buf_clock_curr == buf_clock_min ? buf_clock_max : buf_clock_curr - BLOCK_SECTOR_SIZE;
 		while (buf_clock_curr != start) {
-			// if (buf_clock_curr >= buf_clock_max) {
-			// 	buf_clock_curr = buf_clock_min;
-			// }
 			buf_clock_curr = buf_clock_curr >= buf_clock_max ? buf_clock_min : buf_clock_curr;
 			ce = find_evic_cache_elem(buf_clock_curr);
-			// if (ce == NULL) {
-			// 	buf_clock_curr += BLOCK_SECTOR_SIZE;
-			// 	continue;
-			// }
-			// if (ce->isUsed) {
-			// 	ce->isUsed = false;
-			// 	if (ce->pin_cnt == 0) {
-			// 		if (!ce->isDirty && ce_fst_clrd == NULL) {
-			// 			ce_fst_clrd = ce;
-			// 		}
-			// 		else if (ce->isDirty && ce_fst_clrd_dirty == NULL) {
-			// 			ce_fst_clrd_dirty = ce;
-			// 		}
-
-			// 	}
-			// 	buf_clock_curr += BLOCK_SECTOR_SIZE;
-			// 	continue;
-			// }
-			// else {
-			// 	if (ce->pin_cnt != 0) {
-			// 		buf_clock_curr += BLOCK_SECTOR_SIZE;
-			// 		continue;
-			// 	}
-			// 	if (ce->isDirty) {
-			// 		/* Write from cache to filesystem */
-			// 		cache_to_disk(ce);
-			// 		ce->isDirty = false;
-			// 	}
-			// 	hash_delete (&buf_ht, &ce->buf_hash_elem);
-			// 	hash_delete (&evic_buf_ht, &ce->evic_buf_hash_elem);
-			// 	return ce;
-			// }
 
 			if (ce) {
 				if (ce->isUsed) {
 					if (ce->pin_cnt == 0) {
-						// if (!ce->isDirty && ce_fst_clrd == NULL) {
-						// 	ce_fst_clrd = ce;
-						// }
-						// else if (ce->isDirty && ce_fst_clrd_dirty == NULL) {
-						// 	ce_fst_clrd_dirty = ce;
-						// }
 						if (ce->isDirty && !ce_fst_clrd_dirty) {
 							ce_fst_clrd_dirty = ce;
 						} else if (!ce->isDirty && !ce_fst_clrd) {
@@ -481,18 +338,6 @@ struct cache_elem *pick_ce (void) {
 					ce->isUsed = false;
 					continue;
 				} else {
-					// if (ce->pin_cnt != 0) {
-					// 	buf_clock_curr += BLOCK_SECTOR_SIZE;
-					// 	continue;
-					// }
-					// if (ce->isDirty) {
-					// 	/* Write from cache to filesystem */
-					// 	cache_to_disk(ce);
-					// 	ce->isDirty = false;
-					// }
-					// hash_delete (&buf_ht, &ce->buf_hash_elem);
-					// hash_delete (&evic_buf_ht, &ce->evic_buf_hash_elem);
-					// return ce;
 					if (ce->pin_cnt == 0) {
 						if (ce->isDirty) {
 							/* Write from cache to filesystem */
@@ -513,7 +358,6 @@ struct cache_elem *pick_ce (void) {
 				continue;
 			}
 		}
-		// if (ce_fst_clrd != NULL || ce_fst_clrd_dirty != NULL) continue;
 		if (ce_fst_clrd || ce_fst_clrd_dirty ) continue;
 		cond_wait(&cond_pin, &c_lock);
 	}
