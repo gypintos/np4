@@ -205,12 +205,12 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector,bool isd
 bool
 dir_remove (struct dir *dir, const char *name) 
 {
-  struct dir_entry e;
+  struct dir_entry de;
   struct inode *inode = NULL;
-  bool success = false;
+  bool result = false;
   off_t ofs;
   /** NEW ADDED HERE **/
-  struct dir *mydir = NULL;
+  struct dir *dir_ = NULL;
 
   ASSERT (dir != NULL);
   ASSERT (name != NULL);
@@ -218,40 +218,39 @@ dir_remove (struct dir *dir, const char *name)
   inode_acquire_lock(dir->inode);
 
   /* Find directory entry. */
-  if (!lookup (dir, name, &e, &ofs))
+  if (!lookup (dir, name, &de, &ofs))
     goto done;
 
   /* Open inode. */
-  inode = inode_open (e.inode_sector);
+  inode = inode_open (de.inode_sector);
   if (inode == NULL)
     goto done;
 
   /** NEW ADDED HERE **/
-  if (e.isdir) {
-    mydir = dir_open (inode);
+  if (de.isdir) {
+    dir_ = dir_open (inode);
  /* if any of these conditions is true, the dir can't be removed */
-    if ((mydir == NULL) || dir_is_root (mydir) || !dir_is_empty (mydir)
-     || dir_in_use (mydir))
+    if (!dir_ || dir_is_root(dir_) || !dir_is_empty(dir_)
+     || dir_in_use(dir_))
       goto done;
   }
 
-
   /* Erase directory entry. */
-  e.in_use = false;
-  // if (inode_write_at (dir->inode, &e, sizeof e, ofs) != sizeof e) 
+  de.in_use = false;
+  
   /** NEW ADDED HERE **/
-  if (inode_write_at (dir->inode, &e, sizeof e, ofs, true) != sizeof e)
+  if (inode_write_at (dir->inode, &de, sizeof de, ofs, true) != sizeof de)
     goto done;
 
   /* Remove inode. */
   inode_remove (inode);
-  success = true;
+  result = true;
 
  done:
   /** NEW ADDED HERE **/
   inode_release_lock(dir->inode);
   inode_close (inode);
-  return success;
+  return result;
 }
 
 /* Reads the next directory entry in DIR and stores the name in
@@ -260,14 +259,14 @@ dir_remove (struct dir *dir, const char *name)
 bool
 dir_readdir (struct dir *dir, char name[NAME_MAX + 1])
 {
-  struct dir_entry e;
+  struct dir_entry de;
 
-  while (inode_read_at (dir->inode, &e, sizeof e, dir->pos) == sizeof e) 
+  while (inode_read_at (dir->inode, &de, sizeof de, dir->pos) == sizeof de) 
     {
-      dir->pos += sizeof e;
-      if (e.in_use)
+      dir->pos += sizeof de;
+      if (de.in_use)
         {
-          strlcpy (name, e.name, NAME_MAX + 1);
+          strlcpy (name, de.name, NAME_MAX + 1);
           return true;
         } 
     }
@@ -293,16 +292,16 @@ dir_is_root (struct dir *dir)
 bool
 dir_is_empty (struct dir *dir)
 {
-  struct dir_entry e;
+  struct dir_entry de;
   size_t ofs;
 
   ASSERT (dir != NULL);
 
-  for (ofs = 0; inode_read_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
-       ofs += sizeof e)
-  if (e.in_use
-      && (strcmp (".", e.name) != 0)
-    && (strcmp ("..", e.name) != 0))
+  for (ofs = 0; inode_read_at (dir->inode, &de, sizeof de, ofs) == sizeof de;
+       ofs += sizeof de)
+  if (de.in_use
+      && (strcmp (".", de.name) != 0)
+    && (strcmp ("..", de.name) != 0))
     return false;
 
   return true;
