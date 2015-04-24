@@ -63,11 +63,6 @@ filesys_create (const char *name, off_t initial_size, bool isdir)
   bool success = false;
 
   if (strcmp (name_, "") == 0) goto done;
-  // success = (dir_ != NULL
-  //                 && free_map_allocate (1, &inode_sector)
-  //                 && inode_create (inode_sector, initial_size)
-  //                 && dir_add (dir_, name_, inode_sector, isdir));
-
   success = (dir_ && free_map_allocate (1, &inode_sector)
     && inode_create (inode_sector, initial_size) 
     && dir_add (dir_, name_, inode_sector, isdir));
@@ -95,11 +90,6 @@ filesys_create (const char *name, off_t initial_size, bool isdir)
     dir_close (dir_);
 
   free(name_);
-  // if (ndir) {
-  //   dir_close (ndir);
-  // } else {
-  //   if (ninode) inode_close (ninode);
-  // }
   if (!ndir && ninode){
     inode_close(ninode);
   } else if (ndir) {
@@ -117,21 +107,11 @@ filesys_create (const char *name, off_t initial_size, bool isdir)
 void
 filesys_open (const char *name, struct file **file, struct dir **dir, bool *isdir)
 {
-  // struct dir *dir = dir_open_root ();
-  // struct inode *inode = NULL;
-
-  // if (dir != NULL)
-  //   dir_lookup (dir, name, &inode);
-  // dir_close (dir);
-
-  // return file_open (inode);
-
-  /** NEW ADDED HERE **/
   if (strlen(name) == 0) {
     if (file != NULL) *file = NULL;
-  if (dir != NULL) *dir = NULL;
-  if (isdir != NULL) *isdir = false;
-  return;
+    if (dir != NULL) *dir = NULL;
+    if (isdir != NULL) *isdir = false;
+    return;
   }
 
   struct dir *dir_ = path_to_dir (name);
@@ -142,10 +122,10 @@ filesys_open (const char *name, struct file **file, struct dir **dir, bool *isdi
   /* name is "/", open root */
   if (strcmp (name_, "") == 0) {
     if (file != NULL) *file = NULL;
-  if (dir != NULL) *dir = dir_;
-  if (isdir != NULL) *isdir = true;
-  free (name_);
-  return;
+    if (dir != NULL) *dir = dir_;
+    if (isdir != NULL) *isdir = true;
+    free (name_);
+    return;
   }
 
   if (dir_ != NULL)
@@ -154,7 +134,7 @@ filesys_open (const char *name, struct file **file, struct dir **dir, bool *isdi
     if (dir != NULL) *dir = NULL;
     if (isdir != NULL) *isdir = false;
     dir_close (dir_);
-      free (name_);
+    free (name_);
     return;
   }
 
@@ -163,14 +143,14 @@ filesys_open (const char *name, struct file **file, struct dir **dir, bool *isdi
 
   if (isdir_) {
     if (file != NULL) *file = NULL;
-  ASSERT (dir != NULL);
-  *dir = dir_open (inode);
-  if (isdir != NULL) *isdir = true;
+    ASSERT (dir != NULL);
+    *dir = dir_open (inode);
+    if (isdir != NULL) *isdir = true;
   } else {
     ASSERT (file != NULL);
     *file = file_open (inode);
-  if (dir != NULL) *dir = NULL;
-  if (isdir != NULL) *isdir = false;
+    if (dir != NULL) *dir = NULL;
+    if (isdir != NULL) *isdir = false;
   }
 }
 
