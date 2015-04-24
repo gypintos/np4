@@ -205,17 +205,17 @@ do_format (void)
 {
   printf ("Formatting file system...");
   free_map_create ();
-  // if (!dir_create (ROOT_DIR_SECTOR, 16))
-  /** NEW ADDED HERE **/
   if (!dir_create (ROOT_DIR_SECTOR, 2))
     PANIC ("root directory creation failed");
 
   /** NEW ADDED HERE **/
-  if (!dir_add (dir_open_root (), ".", ROOT_DIR_SECTOR, true)
-      || !dir_add (dir_open_root (), "..", ROOT_DIR_SECTOR, true))
-  PANIC ("add entry . and .. for root directory failed");
-
-
+  // if (!dir_add (dir_open_root (), ".", ROOT_DIR_SECTOR, true)
+  //     || !dir_add (dir_open_root (), "..", ROOT_DIR_SECTOR, true))
+  //   PANIC ("add entry . and .. for root directory failed");
+  if (dir_add(dir_open_root (), ".", ROOT_DIR_SECTOR, true) ==  NULL ||
+      dir_add(dir_open_root (), "..", ROOT_DIR_SECTOR, true) == NULL ){
+    PANIC ("root directory added . or .. failed");
+  }
   free_map_close ();
   printf ("done.\n");
 }
