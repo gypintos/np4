@@ -93,8 +93,8 @@ file_read_at (struct file *file, void *buffer, off_t size, off_t file_ofs)
    Advances FILE's position by the number of bytes read. */
 off_t
 file_write (struct file *file, const void *buffer, off_t size) 
-{ /** NEW ADDED HERE **/
-  off_t bytes_written = inode_write_at (file->inode, buffer, size, file->pos,  /*lock acquired*/ false);
+{ 
+  off_t bytes_written = inode_write_at (file->inode, buffer, size, file->pos,false);
   file->pos += bytes_written;
   return bytes_written;
 }
@@ -110,8 +110,7 @@ off_t
 file_write_at (struct file *file, const void *buffer, off_t size,
                off_t file_ofs) 
 {
-  /** NEW ADDED HERE **/
-  return inode_write_at (file->inode, buffer, size, file_ofs, /*lock acquired*/ false);
+  return inode_write_at (file->inode, buffer, size, file_ofs, false);
 }
 
 /* Prevents write operations on FILE's underlying inode
