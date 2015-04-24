@@ -341,6 +341,6 @@ bool is_dir_removable(struct dir* dir){
   int cnt = inode_get_open_cnt(dir->inode);
   inUse = cnt > 1;
 
-  return isEmpty || isRoot || inUse;
+  return !isEmpty || isRoot || inUse;
 }
 
