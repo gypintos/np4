@@ -87,7 +87,7 @@ void cache_buf_init (void) {
 /* Looks up cache entry for the given sec_id, if
    such entry no found in cache, adds it */
 void
-read_from_cache (block_sector_t sec_id, void *buffer,
+get_sec_from_cache (block_sector_t sec_id, void *buffer,
 				  int sector_ofs, int chunk_size) {
      /* Lookup and pin cache entry - c_lock */
 	 lock_acquire(&c_lock);

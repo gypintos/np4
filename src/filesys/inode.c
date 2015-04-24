@@ -149,18 +149,18 @@ byte_to_sector (const struct inode *inode, off_t pos,  off_t growed_size)
     { // Data is located in indirect blocks
       pos -= BLOCK_SECTOR_SIZE * DIRECT_BLOCKS;
       idx = pos / (BLOCK_SECTOR_SIZE * INDIRECT_BLOCK_PTRS) + DIRECT_BLOCKS;
-      read_from_cache(i_d->ptr[idx], &indirect_block, 0, BLOCK_SECTOR_SIZE);
+      get_sec_from_cache(i_d->ptr[idx], &indirect_block, 0, BLOCK_SECTOR_SIZE);
       pos %= BLOCK_SECTOR_SIZE * INDIRECT_BLOCK_PTRS;
       result = indirect_block[pos / BLOCK_SECTOR_SIZE];
     }
     else
     { // Data is located in doubly indirect blocks
-      read_from_cache(i_d->ptr[DOUBLY_INDIRECT_INDEX], &indirect_block,
+      get_sec_from_cache(i_d->ptr[DOUBLY_INDIRECT_INDEX], &indirect_block,
                       0, BLOCK_SECTOR_SIZE);
       pos -= BLOCK_SECTOR_SIZE *
              (DIRECT_BLOCKS + INDIRECT_BLOCKS * INDIRECT_BLOCK_PTRS);
       idx = pos / (BLOCK_SECTOR_SIZE  * INDIRECT_BLOCK_PTRS);
-      read_from_cache(indirect_block[idx], &indirect_block, 0,
+      get_sec_from_cache(indirect_block[idx], &indirect_block, 0,
                       BLOCK_SECTOR_SIZE);
       pos %= BLOCK_SECTOR_SIZE * INDIRECT_BLOCK_PTRS;
       result = indirect_block[pos / BLOCK_SECTOR_SIZE];
@@ -432,7 +432,7 @@ inode_read_at (struct inode *inode, void *buffer, off_t size, off_t offset)
       if (chunk_size <= 0)
         break;
 
-      read_from_cache (sector_idx, buffer + bytes_read, sector_ofs,
+      get_sec_from_cache (sector_idx, buffer + bytes_read, sector_ofs,
                        chunk_size);
 
       /* Advance. */
@@ -657,7 +657,7 @@ inode_extend_indirect_block (struct inode_disk *i_d, size_t sectors)
   }
   else
   {
-    read_from_cache(i_d->ptr[i_d->direct_index], &block, 0, BLOCK_SECTOR_SIZE);
+    get_sec_from_cache(i_d->ptr[i_d->direct_index], &block, 0, BLOCK_SECTOR_SIZE);
   }
   while (i_d->indirect_index < INDIRECT_BLOCK_PTRS)
   {
@@ -694,7 +694,7 @@ inode_extend_nested_block (struct inode_disk *i_d, size_t sectors,
   }
   else
   {
-    read_from_cache(block->ptr[i_d->indirect_index], &nested_block, 0,
+    get_sec_from_cache(block->ptr[i_d->indirect_index], &nested_block, 0,
                     BLOCK_SECTOR_SIZE);
   }
   while (i_d->doubly_indirect_index < INDIRECT_BLOCK_PTRS)
@@ -728,7 +728,7 @@ inode_extend_doubly_indirect_block (struct inode_disk *i_d, size_t sectors)
   }
   else
   {
-    read_from_cache(i_d->ptr[i_d->direct_index], &block, 0,
+    get_sec_from_cache(i_d->ptr[i_d->direct_index], &block, 0,
                     BLOCK_SECTOR_SIZE);
   }
   while (i_d->indirect_index < INDIRECT_BLOCK_PTRS)
@@ -787,7 +787,7 @@ inode_dealloc_block (block_sector_t *sector, size_t size)
 {
   unsigned int i;
   struct indirect_block block;
-  read_from_cache(*sector, &block, 0, BLOCK_SECTOR_SIZE);
+  get_sec_from_cache(*sector, &block, 0, BLOCK_SECTOR_SIZE);
   for (i = 0; i < size; i++)
     free_map_release(block.ptr[i], 1);
   free_map_release(*sector, 1);
@@ -826,7 +826,7 @@ inode_dealloc (struct inode_disk *i_d)
   {
     unsigned int i;
     struct indirect_block block;
-    read_from_cache(i_d->ptr[idx], &block, 0, BLOCK_SECTOR_SIZE);
+    get_sec_from_cache(i_d->ptr[idx], &block, 0, BLOCK_SECTOR_SIZE);
     for(i = 0; i < i_sectors; i++) {
       size_t size = sectors < INDIRECT_BLOCK_PTRS ? sectors
                                                   : INDIRECT_BLOCK_PTRS;

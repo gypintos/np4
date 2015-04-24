@@ -27,7 +27,7 @@ struct lock *pre_read_lock_ptr;
 
 void cache_buf_init(void);
 void all_cache_to_disk(bool exiting);
-void read_from_cache (block_sector_t sector_idx, void *buffer,
+void get_sec_from_cache (block_sector_t sector_idx, void *buffer,
 				  int sector_ofs, int chunk_size);
 void
 buf_to_cache (block_sector_t sector_idx, const void *buffer, int sector_ofs,
