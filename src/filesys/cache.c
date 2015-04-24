@@ -43,7 +43,7 @@ evic_cache_hash_fun (const struct hash_elem *e, void *aux UNUSED);
 bool
 evic_cache_elem_cmp (const struct hash_elem *a, const struct hash_elem *b, void *aux);
 
-struct cache_elem *find_cache_elem (block_sector_t sector);
+struct cache_elem *find_cache_elem (block_sector_t sec);
 struct cache_elem *find_evic_cache_elem (void* ch_addr);
 struct cache_elem *load_sec_to_cache (block_sector_t sector, bool isPreRead);
 struct cache_elem *load_sec_to_cache_after_evic (block_sector_t sector, bool isPreRead);
@@ -402,7 +402,7 @@ evic_cache_elem_cmp (const struct hash_elem *a, const struct hash_elem *b,
 
 /* Returns cache enry for the given sector, or NULL if sector
    is not in cache */
-struct cache_elem *find_cache_elem (block_sector_t sector){
+struct cache_elem *find_cache_elem (block_sector_t sec){
   // struct cache_elem ce;
   // struct hash_elem *e;
 
@@ -410,9 +410,9 @@ struct cache_elem *find_cache_elem (block_sector_t sector){
   // e = hash_find (&buf_ht, &ce.buf_hash_elem);
   // return e != NULL ? hash_entry (e, struct cache_elem, buf_hash_elem) : NULL;
 
-  struct cache_elem* ce = malloc(sizeof (struct cache_elem));
-  ce->secId = sector;
-  struct hash_elem* e = hash_find(&buf_ht, &ce->buf_hash_elem);
+  struct cache_elem ce;
+  ce.secId = sec;
+  struct hash_elem* e = hash_find(&buf_ht, &ce.buf_hash_elem);
   if (e!=NULL){
   	return hash_entry(e,struct cache_elem,buf_hash_elem);
   } else {
