@@ -163,7 +163,7 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector,bool isd
     return false;
 
   // inode_acquire_lock(dir_get_inode(dir));
-  inode_acquire_lock(dir->inode)
+  inode_acquire_lock(dir->inode);
 
   /* Check that NAME is not in use. */
   if (lookup (dir, name, NULL, NULL))
