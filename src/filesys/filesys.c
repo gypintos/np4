@@ -63,15 +63,15 @@ filesys_create (const char *name, off_t initial_size, bool isdir)
   bool success = false;
 
   if (strcmp (name_, "") == 0) goto done;
-  // success = (dir_ != NULL
-  //                 && free_map_allocate (1, &inode_sector)
-  //                 && inode_create (inode_sector, initial_size)
-  //                 && dir_add (dir_, name_, inode_sector, isdir));
-  if (!dir_ && free_map_allocate (1, &inode_sector) ){
-    if (inode_create (inode_sector, initial_size) &&
-        dir_add (dir_, name_, inode_sector, isdir))
-      success = true;
-  }
+  success = (dir_ != NULL
+                  && free_map_allocate (1, &inode_sector)
+                  && inode_create (inode_sector, initial_size)
+                  && dir_add (dir_, name_, inode_sector, isdir));
+  // if (!dir_ && free_map_allocate (1, &inode_sector) ){
+  //   if (inode_create (inode_sector, initial_size) &&
+  //       dir_add (dir_, name_, inode_sector, isdir))
+  //     success = true;
+  // }
 
 
   struct inode *ninode = NULL;
@@ -92,8 +92,8 @@ filesys_create (const char *name, off_t initial_size, bool isdir)
   /** NEW ADDED HERE **/
   if (success && (!success1)) {
     printf("fail to add . and .. when create dir name: %s\n", name);
-  dir_remove (dir_, name_);
-  success = false;
+    dir_remove (dir_, name_);
+    success = false;
   }
 
   done:
