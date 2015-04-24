@@ -44,7 +44,7 @@ filesys_done (void)
 {
   free_map_close ();
   /** NEW ADDED HERE **/
-  all_cache_to_disk (/*Exiting */ true);
+  all_cache_to_disk (true);
 }
 
 /* Creates a file named NAME with the given INITIAL_SIZE.
@@ -55,21 +55,18 @@ bool
 filesys_create (const char *name, off_t initial_size, bool isdir) 
 {
   /** NEW ADDED HERE **/
-  if (strlen (name) == 0) return false;
+  if (strlen(name) == 0) return false;
   block_sector_t inode_sector = 0;
 
-  struct dir *mydir = path_to_dir (name);
-  char *myname = path_to_name (name);
+  struct dir *dir_ = path_to_dir(name);
+  char *name_ = path_to_name(name);
   bool success = false;
 
-  if (strcmp (myname, "") == 0) goto done;
-
-
-  // struct dir *dir = dir_open_root ();
-  success = (mydir != NULL
+  if (strcmp (name_, "") == 0) goto done;
+  success = (dir_ != NULL
                   && free_map_allocate (1, &inode_sector)
                   && inode_create (inode_sector, initial_size)
-                  && dir_add (mydir, myname, inode_sector, isdir));
+                  && dir_add (dir_, name_, inode_sector, isdir));
 
 
   struct inode *ninode = NULL;
@@ -81,7 +78,7 @@ filesys_create (const char *name, off_t initial_size, bool isdir)
               && (ndir = dir_open (ninode))
         && dir_add (ndir, ".", inode_sector, true)
         && dir_add (ndir, "..",
-                    inode_get_inumber (dir_get_inode (mydir)), true));
+                    inode_get_inumber (dir_get_inode (dir_)), true));
   /** NEW ADDED HERE **/
 
   if (!success && inode_sector != 0) 
@@ -90,15 +87,15 @@ filesys_create (const char *name, off_t initial_size, bool isdir)
   /** NEW ADDED HERE **/
   if (success && (!success1)) {
     printf("fail to add . and .. when create dir name: %s\n", name);
-  dir_remove (mydir, myname);
+  dir_remove (dir_, name_);
   success = false;
   }
 
   done:
-  dir_close (mydir);
+  dir_close (dir_);
 
   /** NEW ADDED HERE **/
-  free(myname);
+  free(name_);
   if (ndir) {
     dir_close (ndir);
   } else {
@@ -134,32 +131,32 @@ filesys_open (const char *name, struct file **file, struct dir **dir, bool *isdi
   return;
   }
 
-  struct dir *mydir = path_to_dir (name);
-  char *myname = path_to_name (name);
+  struct dir *dir_ = path_to_dir (name);
+  char *name_ = path_to_name (name);
   struct inode *inode = NULL;
   bool isdir_ = false;
 
   /* name is "/", open root */
-  if (strcmp (myname, "") == 0) {
+  if (strcmp (name_, "") == 0) {
     if (file != NULL) *file = NULL;
-  if (dir != NULL) *dir = mydir;
+  if (dir != NULL) *dir = dir_;
   if (isdir != NULL) *isdir = true;
-  free (myname);
+  free (name_);
   return;
   }
 
-  if (mydir != NULL)
-    if (!dir_lookup (mydir, myname, &inode, &isdir_)) {
+  if (dir_ != NULL)
+    if (!dir_lookup (dir_, name_, &inode, &isdir_)) {
     if (file != NULL) *file = NULL;
     if (dir != NULL) *dir = NULL;
     if (isdir != NULL) *isdir = false;
-    dir_close (mydir);
-      free (myname);
+    dir_close (dir_);
+      free (name_);
     return;
   }
 
-  dir_close (mydir);
-  free (myname);
+  dir_close (dir_);
+  free (name_);
 
   if (isdir_) {
     if (file != NULL) *file = NULL;
@@ -188,18 +185,18 @@ filesys_remove (const char *name)
   /** NEW ADDED HERE **/
   if (strlen(name) == 0) return false;
   
-  struct dir* mydir = path_to_dir(name);
-  char* myname = path_to_name(name);
+  struct dir* dir_ = path_to_dir(name);
+  char* name_ = path_to_name(name);
   bool success = false;
 
   /* can't remove root */
-  if (strcmp (myname, "") == 0) goto done;
+  if (strcmp (name_, "") == 0) goto done;
 
-  success = mydir != NULL && dir_remove (mydir, myname);
+  success = dir_ != NULL && dir_remove (dir_, name_);
 
   done:
-  dir_close (mydir);
-  free(myname); 
+  dir_close (dir_);
+  free(name_); 
 
   return success;
 }
@@ -234,39 +231,39 @@ bool filesys_chdir (const char* dir)
 {
   if (strlen(dir) == 0) return false;
 
-  struct dir* mydir = path_to_dir(dir);
-  char* myname = path_to_name(dir);
+  struct dir* dir_ = path_to_dir(dir);
+  char* name_ = path_to_name(dir);
   struct inode* inode = NULL;
   bool isdir = false;
 
   bool success = false;
 
   /* Change work directory to root */
-  if (strcmp(myname, "") == 0) {
+  if (strcmp(name_, "") == 0) {
     if (thread_current()->cwd) dir_close(thread_current()->cwd);
-  thread_current()->cwd = mydir;
+  thread_current()->cwd = dir_;
   success = true;
   goto done;
   }
 
-  if (!dir_lookup(mydir, myname, &inode, &isdir)) {
-    dir_close(mydir);
+  if (!dir_lookup(dir_, name_, &inode, &isdir)) {
+    dir_close(dir_);
   success = false;
   goto done;
   }
 
   if (!isdir) {
-    dir_close(mydir);
+    dir_close(dir_);
   success = false;
   } else {
     if (thread_current()->cwd) dir_close(thread_current()->cwd);
   thread_current()->cwd = dir_open(inode);
-  dir_close(mydir);
+  dir_close(dir_);
   success = true;
   }
 
   done:
-  free(myname);
+  free(name_);
   return success;
 }
 
