@@ -77,38 +77,34 @@ filesys_create (const char *name, off_t initial_size, bool isdir)
   bool success1 = true;
   if (success && isdir){
     success1 = ((ninode = inode_open (inode_sector))
-              && (ndir = dir_open (ninode))
-        && dir_add (ndir, ".", inode_sector, true)
-        && dir_add (ndir, "..",
-                    inode_get_inumber (dir_get_inode (dir_)), true));
-    // success1 =( (ninode = inode_open (inode_sector))
-    //   && (ndir = dir_open (ninode))
-    //   && dir_add (ndir, ".", inode_sector, true)
-    //   && dir_add (ndir, "..",inode_get_inumber(dir_->inode), true));
+      && (ndir = dir_open (ninode))
+      && dir_add (ndir, ".", inode_sector, true)
+      && dir_add (ndir, "..",inode_get_inumber (dir_get_inode (dir_)), true));
   }
-  /** NEW ADDED HERE **/
 
-  if (!success && inode_sector != 0) 
+  if (inode_sector != 0 && !success) 
     free_map_release (inode_sector, 1);
 
-  /** NEW ADDED HERE **/
-  if (success && (!success1)) {
-    printf("fail to add . and .. when create dir name: %s\n", name);
-    dir_remove (dir_, name_);
+  if (success && !success1) {
     success = false;
+    printf("Failure: create dir: %s\n", name);
+    dir_remove (dir_, name_);
   }
 
   done:
-  dir_close (dir_);
+    dir_close (dir_);
 
-  /** NEW ADDED HERE **/
   free(name_);
-  if (ndir) {
-    dir_close (ndir);
-  } else {
-    if (ninode) inode_close (ninode);
+  // if (ndir) {
+  //   dir_close (ndir);
+  // } else {
+  //   if (ninode) inode_close (ninode);
+  // }
+  if (!ndir && ninode){
+    inode_close(ninode);
+  } else if (ndir) {
+    dir_close(ndir);
   }
-
 
   return success;
 }
