@@ -339,7 +339,7 @@ static char* path_to_name (const char* path)
 
   while (next_token!= NULL){
     token = next_token;
-    next_token = strtok_r(NULL, "/", &save_ptr));
+    next_token = strtok_r(NULL, "/", &save_ptr);
   }
 
   if (token == NULL){
