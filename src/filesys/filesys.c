@@ -229,42 +229,72 @@ do_format (void)
    Returns true if successful, otherwise false */
 bool filesys_cd (const char* dir)
 {
-  if (strlen(dir) == 0) return false;
+  // if (strlen(dir) == 0) return false;
 
-  struct dir* dir_ = path_to_dir(dir);
-  char* name_ = path_to_name(dir);
-  struct inode* inode = NULL;
-  bool isdir = false;
+  // struct dir* dir_ = path_to_dir(dir);
+  // char* name_ = path_to_name(dir);
+  // struct inode* inode = NULL;
+  // bool isdir = false;
 
-  bool success = false;
+  // bool success = false;
 
-  /* Change work directory to root */
-  if (strcmp(name_, "") == 0) {
-    if (thread_current()->cwd) dir_close(thread_current()->cwd);
-  thread_current()->cwd = dir_;
-  success = true;
-  goto done;
-  }
+  // /* Change work directory to root */
+  // if (strcmp(name_, "") == 0) {
+  //   if (thread_current()->cwd) dir_close(thread_current()->cwd);
+  // thread_current()->cwd = dir_;
+  // success = true;
+  // goto done;
+  // }
 
-  if (!dir_lookup(dir_, name_, &inode, &isdir)) {
-    dir_close(dir_);
-  success = false;
-  goto done;
-  }
+  // if (!dir_lookup(dir_, name_, &inode, &isdir)) {
+  //   dir_close(dir_);
+  // success = false;
+  // goto done;
+  // }
 
-  if (!isdir) {
-    dir_close(dir_);
-  success = false;
+  // if (!isdir) {
+  //   dir_close(dir_);
+  // success = false;
+  // } else {
+  //   if (thread_current()->cwd) dir_close(thread_current()->cwd);
+  //   thread_current()->cwd = dir_open(inode);
+  //   dir_close(dir_);
+  //   success = true;
+  // }
+
+  // done:
+  // free(name_);
+  // return success;
+
+
+  bool result = false;
+  if (strlen(dir) == 0) {
+    return false;
   } else {
-    if (thread_current()->cwd) dir_close(thread_current()->cwd);
-  thread_current()->cwd = dir_open(inode);
-  dir_close(dir_);
-  success = true;
-  }
+    struct dir* dir_ = path_to_dir(dir);
+    char* name_ = path_to_name(dir);
+    struct inode* inode = NULL;
+    bool isdir = false;
 
-  done:
+    if (strcmp(name_, "") == 0) {
+      if (thread_current()->cwd) 
+        dir_close(thread_current()->cwd);
+      thread_current()->cwd = dir_;
+      result = true;
+    } else if (dir_lookup(dir_, name_, &inode, &isdir) ==NULL ||
+               isdir == NULL) {
+      dir_close(dir_);
+      result = false;
+    } else if (isdir != NULL){
+      if (thread_current()->cwd)
+        dir_close(thread_current()->cwd);
+      thread_current()->cwd = dir_open(inode);
+      dir_close(dir_);
+      result = true;
+    }
+  }
   free(name_);
-  return success;
+  return result;
 }
 
 /* Traverse directory hierachy according to tokens in PATH, except
