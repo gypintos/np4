@@ -16,8 +16,8 @@ struct block *fs_device;
 static void do_format (void);
 
 /** NEW ADDED HERE **/
-static struct dir* path_to_dir (const char* path);
-static char* path_to_name (const char* path);
+static struct dir* filesys_get_dir (const char* path);
+static char* filesys_get_name (const char* path);
 
 /* Initializes the file system module.
    If FORMAT is true, reformats the file system. */
@@ -58,8 +58,8 @@ filesys_create (const char *name, off_t initial_size, bool isdir)
   if (strlen(name) == 0) return false;
   block_sector_t inode_sector = 0;
 
-  struct dir *dir_ = path_to_dir(name);
-  char *name_ = path_to_name(name);
+  struct dir *dir_ = filesys_get_dir(name);
+  char *name_ = filesys_get_name(name);
   bool success = false;
 
   if (strcmp (name_, "") == 0) goto done;
@@ -114,8 +114,8 @@ filesys_open (const char *name, struct file **file, struct dir **dir, bool *isdi
     return;
   }
 
-  struct dir *dir_ = path_to_dir (name);
-  char *name_ = path_to_name (name);
+  struct dir *dir_ = filesys_get_dir (name);
+  char *name_ = filesys_get_name (name);
   struct inode *inode = NULL;
   bool isdir_ = false;
 
@@ -168,8 +168,8 @@ filesys_remove (const char *name)
   /** NEW ADDED HERE **/
   // if (strlen(name) == 0) return false;
   
-  // struct dir* dir_ = path_to_dir(name);
-  // char* name_ = path_to_name(name);
+  // struct dir* dir_ = filesys_get_dir(name);
+  // char* name_ = filesys_get_name(name);
   // bool success = false;
 
   //  can't remove root 
@@ -187,8 +187,8 @@ filesys_remove (const char *name)
   if (strlen(name) == 0){
     return false;
   } else {
-    struct dir* dir_ = path_to_dir(name);
-    char* name_ = path_to_name(name);
+    struct dir* dir_ = filesys_get_dir(name);
+    char* name_ = filesys_get_name(name);
     if (strlen(name_) != 0) {
       result = dir_ != NULL && dir_remove (dir_, name_);
     }
@@ -230,8 +230,8 @@ bool filesys_cd (const char* dir)
   if (strlen(dir) == 0) {
     return false;
   } else {
-    struct dir* dir_ = path_to_dir(dir);
-    name_ = path_to_name(dir);
+    struct dir* dir_ = filesys_get_dir(dir);
+    name_ = filesys_get_name(dir);
     struct inode* inode = NULL;
     bool isdir = false;
 
@@ -257,7 +257,7 @@ bool filesys_cd (const char* dir)
 }
 
 
-static struct dir* path_to_dir (const char* path)
+static struct dir* filesys_get_dir (const char* path)
 {
   struct dir* dir;
   int len = strlen(path);
@@ -290,7 +290,7 @@ static struct dir* path_to_dir (const char* path)
 }
 
 
-static char* path_to_name (const char* path)
+static char* filesys_get_name (const char* path)
 {
   // if (strcmp(path, "") == 0) goto done_empty;
 
