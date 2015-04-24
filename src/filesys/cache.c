@@ -447,18 +447,14 @@ cache_destructor (struct hash_elem *ce_, void *aux UNUSED)
 void *get_meta_inode (block_sector_t sec_id) {
 	/* Lookup and pin cache entry - c_lock */
 	 lock_acquire(&c_lock);
-	 struct cache_elem *ce = find_cache_elem (sec_id);
-	 if (ce != NULL) {
-		 ce->pin_cnt++;
-	 }
+	 struct cache_elem* ce = find_cache_elem (sec_id);
+	 if (ce) ce->pin_cnt++;
 	 lock_release(&c_lock);
 
 	 /* Entry not found, create new */
-	 if (ce == NULL) {
-		 ce = load_sec_to_cache (sec_id, /* is readahead */ false);
-	 }
+	 if (!ce) 
+		 ce = load_sec_to_cache (sec_id,false);
 	 
-
 	 return ce->ch_addr;
 }
 
