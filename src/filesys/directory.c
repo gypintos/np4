@@ -329,7 +329,7 @@ bool is_dir_removable(struct dir* dir){
 
   struct dir_entry de;
   size_t off = 0;
-  while (inode_read_at(dir->inode,&de, sizeof de,off) == sizeofde ){
+  while (inode_read_at(dir->inode,&de, sizeof de,off) == sizeof de ){
     if (de.in_use && strcmp(".", de.name) != 0 
         && strcmp("..", de.name) != 0){
       isEmpty = false;
