@@ -458,17 +458,15 @@ void *get_meta_inode (block_sector_t sec_id) {
 	 return ce->ch_addr;
 }
 
-
 /* Unpins inode cache entry */
 void free_meta_inode (block_sector_t sec_id, bool dirty) {
 	 lock_acquire(&c_lock);
 	 struct cache_elem *ce = find_cache_elem (sec_id);
-	 /* As it was pinned, should be always retrievable */
-	 ASSERT(ce != NULL);
+	 // ASSERT(ce != NULL);
+	 if (!ce->isDirty) ce->isDirty = dirty;
 	 ce->isUsed = true;
-	 ce->isDirty = ce->isDirty ? true : dirty;
-	 /* Signal to choosing for evict threads */
-	 if (--ce->pin_cnt == 0)
+	 ce->pin_cnt--;
+	 if (ce->pin_cnt == 0)
 		cond_signal(&cond_pin, &c_lock);
 	 lock_release(&c_lock);
 }
