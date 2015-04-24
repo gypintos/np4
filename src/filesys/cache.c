@@ -35,8 +35,8 @@ unsigned
 cache_hash_fun (const struct hash_elem *p_, void *aux);
 bool
 cache_elem_cmp (const struct hash_elem *a_, const struct hash_elem *b_, void *aux);
-void
-cache_destructor (struct hash_elem *ce_, void *aux UNUSED);
+//void
+//cache_destructor (struct hash_elem *ce_, void *aux UNUSED);
 
 unsigned
 evic_cache_hash_fun (const struct hash_elem *p_, void *aux UNUSED);
@@ -433,13 +433,13 @@ struct cache_elem *find_evic_cache_elem (void* ch_addr)
 }
 
 /* Returns a hash value for sector p. */
-void
+/*void
 cache_destructor (struct hash_elem *ce_, void *aux UNUSED)
 {
   struct cache_elem *ce = hash_entry (ce_, struct cache_elem, buf_hash_elem);
   free(ce);
 }
-
+*/
 /* Loads inode cache entry and keeps it pinned*/
 void *get_meta_inode (block_sector_t sec_id) {
 	/* Lookup and pin cache entry - c_lock */
