@@ -76,15 +76,15 @@ filesys_create (const char *name, off_t initial_size, bool isdir)
   struct dir *ndir = NULL;
   bool success1 = true;
   if (success && isdir){
-    // success1 = ((ninode = inode_open (inode_sector))
-    //           && (ndir = dir_open (ninode))
-    //     && dir_add (ndir, ".", inode_sector, true)
-    //     && dir_add (ndir, "..",
-    //                 inode_get_inumber (dir_get_inode (dir_)), true));
     success1 = ((ninode = inode_open (inode_sector))
-      && (ndir = dir_open (ninode))
-      && dir_add (ndir, ".", inode_sector, true)
-      && dir_add (ndir, "..",inode_get_inumber (dir_->inode), true));
+              && (ndir = dir_open (ninode))
+        && dir_add (ndir, ".", inode_sector, true)
+        && dir_add (ndir, "..",
+                    inode_get_inumber (dir_get_inode (dir_)), true));
+    // success1 =( (ninode = inode_open (inode_sector))
+    //   && (ndir = dir_open (ninode))
+    //   && dir_add (ndir, ".", inode_sector, true)
+    //   && dir_add (ndir, "..",inode_get_inumber(dir_->inode), true));
   }
   /** NEW ADDED HERE **/
 
