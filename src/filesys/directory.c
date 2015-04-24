@@ -325,7 +325,7 @@ dir_in_use (struct dir *dir)
 bool is_dir_removable(struct dir* dir){
   bool isEmpty = true;
   bool isRoot = inode_get_inumber(dir->inode) == ROOT_DIR_SECTOR;
-  bool inUse = = false;
+  bool inUse = false;
 
   struct dir_entry de;
   size_t off = 0;
