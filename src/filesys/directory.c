@@ -130,7 +130,6 @@ dir_lookup (const struct dir *dir, const char *name,
 
   if (lookup (dir, name, &de, NULL)){
     *inode = inode_open (de.inode_sector);
-    /** NEW ADDED HERE **/
     *isdir = de.isdir;
   }
   else
@@ -154,7 +153,7 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector,bool isd
 {
   struct dir_entry e;
   off_t ofs;
-  bool success = false;
+  bool result = false;
 
   ASSERT (dir != NULL);
   ASSERT (name != NULL);
@@ -163,7 +162,8 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector,bool isd
   if (*name == '\0' || strlen (name) > NAME_MAX)
     return false;
 
-  inode_acquire_lock(dir_get_inode(dir));
+  // inode_acquire_lock(dir_get_inode(dir));
+  inode_acquire_lock(dir->inode)
 
   /* Check that NAME is not in use. */
   if (lookup (dir, name, NULL, NULL))
@@ -184,21 +184,19 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector,bool isd
   /* Write slot. */
 /** NEW ADDED HERE **/
   memset(&e, 0, sizeof e);
-
   e.in_use = true;
   strlcpy (e.name, name, sizeof e.name);
   e.inode_sector = inode_sector;
 
 /** NEW ADDED HERE **/
   e.isdir = isdir;
-  success = inode_write_at (dir->inode, &e, sizeof e, ofs, /*lock acquired*/ true) == sizeof e;
+  result = inode_write_at (dir->inode, &e, sizeof e, ofs, true) == sizeof e;
   
-  // success = inode_write_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
-
  done:
   /** NEW ADDED HERE **/
-  inode_release_lock(dir_get_inode(dir));
-  return success;
+  // inode_release_lock(dir_get_inode(dir));
+ inode_release_lock(dir->inode);
+  return result;
 }
 
 /* Removes any entry for NAME in DIR.
@@ -217,7 +215,7 @@ dir_remove (struct dir *dir, const char *name)
   ASSERT (dir != NULL);
   ASSERT (name != NULL);
   /** NEW ADDED HERE **/
-  inode_acquire_lock(dir_get_inode(dir));
+  inode_acquire_lock(dir->inode);
 
   /* Find directory entry. */
   if (!lookup (dir, name, &e, &ofs))
@@ -242,7 +240,7 @@ dir_remove (struct dir *dir, const char *name)
   e.in_use = false;
   // if (inode_write_at (dir->inode, &e, sizeof e, ofs) != sizeof e) 
   /** NEW ADDED HERE **/
-  if (inode_write_at (dir->inode, &e, sizeof e, ofs, /*lock acquired*/ true) != sizeof e)
+  if (inode_write_at (dir->inode, &e, sizeof e, ofs, true) != sizeof e)
     goto done;
 
   /* Remove inode. */
@@ -251,7 +249,7 @@ dir_remove (struct dir *dir, const char *name)
 
  done:
   /** NEW ADDED HERE **/
-  inode_release_lock(dir_get_inode(dir));
+  inode_release_lock(dir->inode);
   inode_close (inode);
   return success;
 }
