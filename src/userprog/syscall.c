@@ -689,7 +689,7 @@ void munmap_helper (struct id_addr *id, struct thread *t) {
 /* Changes the current working directory of the process to dir, which
 +   may be relative or absolute. Returns true if successful, false on failure. */
 static bool chdir (const char *dir) {
-   bool success = filesys_chdir(dir);
+   bool success = filesys_cd(dir);
    return success;
  }
 

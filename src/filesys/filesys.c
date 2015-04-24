@@ -212,10 +212,12 @@ do_format (void)
   // if (!dir_add (dir_open_root (), ".", ROOT_DIR_SECTOR, true)
   //     || !dir_add (dir_open_root (), "..", ROOT_DIR_SECTOR, true))
   //   PANIC ("add entry . and .. for root directory failed");
+
   if (dir_add(dir_open_root (), ".", ROOT_DIR_SECTOR, true) ==  NULL ||
       dir_add(dir_open_root (), "..", ROOT_DIR_SECTOR, true) == NULL ){
     PANIC ("root directory added . or .. failed");
   }
+  
   free_map_close ();
   printf ("done.\n");
 }
@@ -225,7 +227,7 @@ do_format (void)
 
 /* Change current thread's work directory to DIR.
    Returns true if successful, otherwise false */
-bool filesys_chdir (const char* dir)
+bool filesys_cd (const char* dir)
 {
   if (strlen(dir) == 0) return false;
 
