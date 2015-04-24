@@ -108,9 +108,9 @@ void
 filesys_open (const char *name, struct file **file, struct dir **dir, bool *isdir)
 {
   if (strlen(name) == 0) {
-    if (file != NULL) *file = NULL;
-    if (dir != NULL) *dir = NULL;
-    if (isdir != NULL) *isdir = false;
+    if (file) *file = NULL;
+    if (dir) *dir = NULL;
+    if (isdir) *isdir = false;
     return;
   }
 
@@ -121,36 +121,36 @@ filesys_open (const char *name, struct file **file, struct dir **dir, bool *isdi
 
   /* name is "/", open root */
   if (strcmp (name_, "") == 0) {
-    if (file != NULL) *file = NULL;
-    if (dir != NULL) *dir = dir_;
-    if (isdir != NULL) *isdir = true;
+    if (file ) *file = NULL;
+    if (dir) *dir = dir_;
+    if (isdir) *isdir = true;
     free (name_);
-    return;
+    // return;
   }
 
-  if (dir_ != NULL)
-    if (!dir_lookup (dir_, name_, &inode, &isdir_)) {
-    if (file != NULL) *file = NULL;
-    if (dir != NULL) *dir = NULL;
-    if (isdir != NULL) *isdir = false;
+  // if (dir_)
+  else if (dir_ && !dir_lookup (dir_, name_, &inode, &isdir_)) {
+    if (file) *file = NULL;
+    if (dir) *dir = NULL;
+    if (isdir) *isdir = false;
     dir_close (dir_);
     free (name_);
-    return;
-  }
-
-  dir_close (dir_);
-  free (name_);
-
-  if (isdir_) {
-    if (file != NULL) *file = NULL;
-    ASSERT (dir != NULL);
-    *dir = dir_open (inode);
-    if (isdir != NULL) *isdir = true;
+    // return;
   } else {
-    ASSERT (file != NULL);
-    *file = file_open (inode);
-    if (dir != NULL) *dir = NULL;
-    if (isdir != NULL) *isdir = false;
+    dir_close (dir_);
+    free (name_);
+
+    if (isdir_) {
+      if (file) *file = NULL;
+      ASSERT (dir);
+      *dir = dir_open (inode);
+      if (isdir) *isdir = true;
+    } else {
+      ASSERT (file);
+      *file = file_open (inode);
+      if (dir) *dir = NULL;
+      if (isdir) *isdir = false;
+    }
   }
 }
 
