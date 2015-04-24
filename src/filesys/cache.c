@@ -220,7 +220,6 @@ struct cache_elem *load_sec_to_cache (block_sector_t sector, bool isPreRead)
   }
 
   lock_release(&c_lock);
-  // return ce_ == NULL ? ce : ce_;
   if (ce_) return ce_;
   else return ce;
 }
@@ -246,7 +245,6 @@ struct cache_elem *load_sec_to_cache_after_evic (block_sector_t sector, bool isP
 	lock_acquire(&c_lock);
 	struct cache_elem *ce_ = find_cache_elem(sector);
 	if (ce_){
-		// ce_->pin_cnt += isPreRead ? 0 : 1;
 		if(!isPreRead) ce_->pin_cnt++;
 		ce_->isUsed = true;
 		lock_acquire(&c_map_lock);
@@ -254,7 +252,6 @@ struct cache_elem *load_sec_to_cache_after_evic (block_sector_t sector, bool isP
 		lock_release(&c_map_lock);
 		free(ce);
 	} else {
-		// ce->pin_cnt += isPreRead ? 0 : 1;
 		if(!isPreRead) ce->pin_cnt++;
 		ce->isUsed = true;
 		hash_insert(&buf_ht, &ce->buf_hash_elem);
@@ -264,7 +261,6 @@ struct cache_elem *load_sec_to_cache_after_evic (block_sector_t sector, bool isP
 	lock_release(&c_lock);
 	free(ce_evict);
 
-	// return ce_ == NULL ? ce : ce_;
 	if (ce_) return ce_;
 	else return ce;
 }
@@ -316,10 +312,10 @@ void all_cache_to_disk (bool exiting) {
 struct cache_elem *pick_ce (void) {
 	
 	struct cache_elem *ce;
-	struct cache_elem *ce_fst_clrd = NULL;
-	struct cache_elem *ce_fst_clrd_dirty = NULL;
+	struct cache_elem *cef = NULL;
+	struct cache_elem *cef_dirty = NULL;
 	
-	while (ce_fst_clrd == NULL && ce_fst_clrd_dirty == NULL) {
+	while (cef == NULL && cef_dirty == NULL) {
 		void *start = buf_clock_curr == buf_clock_min ? buf_clock_max : buf_clock_curr - BLOCK_SECTOR_SIZE;
 		while (buf_clock_curr != start) {
 			buf_clock_curr = buf_clock_curr >= buf_clock_max ? buf_clock_min : buf_clock_curr;
@@ -328,10 +324,10 @@ struct cache_elem *pick_ce (void) {
 			if (ce) {
 				if (ce->isUsed) {
 					if (ce->pin_cnt == 0) {
-						if (ce->isDirty && !ce_fst_clrd_dirty) {
-							ce_fst_clrd_dirty = ce;
-						} else if (!ce->isDirty && !ce_fst_clrd) {
-							ce_fst_clrd = ce;
+						if (ce->isDirty && !cef_dirty) {
+							cef_dirty = ce;
+						} else if (!ce->isDirty && !cef) {
+							cef = ce;
 						}
 					}
 					buf_clock_curr += BLOCK_SECTOR_SIZE;
@@ -358,11 +354,11 @@ struct cache_elem *pick_ce (void) {
 				continue;
 			}
 		}
-		if (ce_fst_clrd || ce_fst_clrd_dirty ) continue;
+		if (cef || cef_dirty ) continue;
 		cond_wait(&cond_pin, &c_lock);
 	}
-	struct cache_elem *ce_chosen = ce_fst_clrd != NULL ? ce_fst_clrd : ce_fst_clrd_dirty;
-	if (ce_chosen == ce_fst_clrd_dirty) {
+	struct cache_elem *ce_chosen = cef != NULL ? cef : cef_dirty;
+	if (ce_chosen == cef_dirty) {
 		/* Write from cache to filesystem */
 		cache_to_disk(ce_chosen);
 		ce_chosen->isDirty = false;
