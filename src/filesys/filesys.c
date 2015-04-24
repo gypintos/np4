@@ -268,11 +268,12 @@ bool filesys_cd (const char* dir)
 
 
   bool result = false;
+  char* name_;
   if (strlen(dir) == 0) {
     return false;
   } else {
     struct dir* dir_ = path_to_dir(dir);
-    char* name_ = path_to_name(dir);
+    name_ = path_to_name(dir);
     struct inode* inode = NULL;
     bool isdir = false;
 
@@ -312,49 +313,78 @@ bool filesys_cd (const char* dir)
    for closing the struct dir* */
 static struct dir* path_to_dir (const char* path)
 {
-  struct dir* dir;
-  char *s = (char *)malloc(sizeof(char) * (strlen(path) + 1));
-  memcpy(s, path, strlen(path));
-  s[strlen(path)] = '\0';
+  // struct dir* dir;
+  // char *s = (char *)malloc(sizeof(char) * (strlen(path) + 1));
+  // memcpy(s, path, strlen(path));
+  // s[strlen(path)] = '\0';
 
-  /* If first char in path is '/' or if current thread's work directory
-     is NULL (which means work directory is root), open root.
-     Otherwise, open current thread's work directory */
-  if (s[0] == '/' || !thread_current ()->cwd){
-    dir = dir_open_root ();
-  } else {
-    dir = dir_reopen(thread_current()->cwd);
-  }
+  // /* If first char in path is '/' or if current thread's work directory
+  //    is NULL (which means work directory is root), open root.
+  //    Otherwise, open current thread's work directory */
+  // if (s[0] == '/' || !thread_current ()->cwd){
+  //   dir = dir_open_root ();
+  // } else {
+  //   dir = dir_reopen(thread_current()->cwd);
+  // }
+
+  // char *save_ptr;
+  // char *token;
+  // char *next_token;
+  // token = strtok_r(s, "/", &save_ptr);
+
+  // if (token)
+  //   next_token = strtok_r(NULL, "/", &save_ptr);
+  // else
+  //   next_token = NULL;
+
+  // if (next_token == NULL) return dir;
+
+  // struct inode *inode;
+  // bool isdir;
+  // for (; next_token != NULL; token = next_token,
+  //      next_token = strtok_r(NULL, "/", &save_ptr)) {
+
+  //   if (!dir_lookup(dir, token, &inode, &isdir)) return NULL;
+
+  //   dir_close(dir);
+  //   dir = dir_open(inode);
+
+  //   if (!isdir){
+  //     dir_close(dir);
+  //     return NULL;
+  //   }
+  // }
+
+  // return dir;
+
+  struct dir* dir;
+  int len = strlen(path);
+  char *p = (char *)malloc(sizeof(char) * (len + 1));
+  memcpy(p, path, len);
+  p[len]='\0';
+
+  bool openRoot = p[0]=='/' || thread_current ()->cwd == NULL;
+  dir = openRoot ? dir_open_root() : dir_reopen(thread_current()->cwd);
 
   char *save_ptr;
-  char *token;
-  char *next_token;
-  token = strtok_r(s, "/", &save_ptr);
-
-  if (token)
-    next_token = strtok_r(NULL, "/", &save_ptr);
-  else
-    next_token = NULL;
-
-  if (next_token == NULL) return dir;
-
+  char *token = strtok_r(p, "/", &save_ptr);
+  char *next_token = token!=NULL ? strtok_r(NULL, "/", &save_ptr): NULL;
   struct inode *inode;
   bool isdir;
-  for (; next_token != NULL; token = next_token,
-       next_token = strtok_r(NULL, "/", &save_ptr)) {
 
-  if (!dir_lookup(dir, token, &inode, &isdir)) return NULL;
-
-  dir_close(dir);
-  dir = dir_open(inode);
-
-  if (!isdir){
+  while (next_token!=NULL){
+    if (dir_lookup(dir, token, &inode, &isdir) == NULL) return NULL;
     dir_close(dir);
-    return NULL;
+    dir = dir_open(inode);
+    if (isdir == false){
+      dir_close(dir);
+      return NULL;
+    }
+    token = next_token;
+    next_token = strtok_r(NULL, "/", &save_ptr);
   }
-  }
-
   return dir;
+
 }
 
 /* Returns last token in PATH
