@@ -321,3 +321,25 @@ dir_in_use (struct dir *dir)
   return (open_cnt > 1);
 }
 
+bool is_dir_removable(){
+  bool isEmpty = true;
+  bool isRoot = inode_get_inumber(dir->inode) == ROOT_DIR_SECTOR;
+  bool inUse = = false;
+
+  struct dir_entry de;
+  size_t off = 0;
+  while (inode_read_at(dir->inode,&de, sizeof de,off) == sizeofde ){
+    if (de.in_use && strcmp(".", de.name) != 0 
+        && strcmp("..", de.name) != 0){
+      isEmpty = false;
+      break;
+    } 
+    off += sizeof de; 
+  }
+
+  int cnt = inode_get_open_cnt(dir->inode);
+  inUse = cnt > 1;
+
+  return isEmpty || isRoot || inUse;
+}
+
