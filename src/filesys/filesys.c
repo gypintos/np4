@@ -166,22 +166,37 @@ filesys_remove (const char *name)
   // dir_close (dir);
 
   /** NEW ADDED HERE **/
-  if (strlen(name) == 0) return false;
+  // if (strlen(name) == 0) return false;
   
-  struct dir* dir_ = path_to_dir(name);
-  char* name_ = path_to_name(name);
-  bool success = false;
+  // struct dir* dir_ = path_to_dir(name);
+  // char* name_ = path_to_name(name);
+  // bool success = false;
 
-  /* can't remove root */
-  if (strcmp (name_, "") == 0) goto done;
+  //  can't remove root 
+  // if (strcmp (name_, "") == 0) goto done;
 
-  success = dir_ != NULL && dir_remove (dir_, name_);
+  // success = dir_ != NULL && dir_remove (dir_, name_);
 
-  done:
-  dir_close (dir_);
-  free(name_); 
+  // done:
+  // dir_close (dir_);
+  // free(name_); 
 
-  return success;
+  // return success;
+
+  bool result = false;
+  if (strlen(name) == 0){
+    return false;
+  } else {
+    struct dir* dir_ = path_to_dir(name);
+    char* name_ = path_to_name(name);
+    if (strlen(name_) != 0) {
+      result = dir_ != NULL && dir_remove (dir_, name_);
+    }
+    dir_close (dir_);
+    free(name_); 
+    return result;
+  }
+
 }
 
 /* Formats the file system. */
