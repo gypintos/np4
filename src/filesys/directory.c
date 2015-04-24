@@ -230,8 +230,9 @@ dir_remove (struct dir *dir, const char *name)
   if (de.isdir) {
     dir_ = dir_open (inode);
  /* if any of these conditions is true, the dir can't be removed */
-    if (!dir_ || dir_is_root(dir_) || !dir_is_empty(dir_)
-     || dir_in_use(dir_))
+    // if (!dir_ || dir_is_root(dir_) || !dir_is_empty(dir_)
+     // || dir_in_use(dir_))
+    if (!dir_ || is_dir_removable(dir_))
       goto done;
   }
 
@@ -321,7 +322,7 @@ dir_in_use (struct dir *dir)
   return (open_cnt > 1);
 }
 
-bool is_dir_removable(){
+bool is_dir_removable(struct dir* dir){
   bool isEmpty = true;
   bool isRoot = inode_get_inumber(dir->inode) == ROOT_DIR_SECTOR;
   bool inUse = = false;
