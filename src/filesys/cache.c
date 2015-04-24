@@ -32,16 +32,16 @@ struct condition pre_read_cond;
 struct lock pre_read_lock;
 
 unsigned
-cache_hash_fun (const struct hash_elem *p_, void *aux);
+cache_hash_fun (const struct hash_elem *e, void *aux);
 bool
-cache_elem_cmp (const struct hash_elem *a_, const struct hash_elem *b_, void *aux);
+cache_elem_cmp (const struct hash_elem *a, const struct hash_elem *b, void *aux);
 //void
 //cache_destructor (struct hash_elem *ce_, void *aux UNUSED);
 
 unsigned
-evic_cache_hash_fun (const struct hash_elem *p_, void *aux UNUSED);
+evic_cache_hash_fun (const struct hash_elem *e, void *aux UNUSED);
 bool
-evic_cache_elem_cmp (const struct hash_elem *a_, const struct hash_elem *b_, void *aux);
+evic_cache_elem_cmp (const struct hash_elem *a, const struct hash_elem *b, void *aux);
 
 struct cache_elem *find_cache_elem (block_sector_t sector);
 struct cache_elem *find_evic_cache_elem (void* ch_addr);
@@ -370,38 +370,38 @@ struct cache_elem *pick_ce (void) {
 
 /* Returns a hash value for sector p. */
 unsigned
-cache_hash_fun (const struct hash_elem *p_, void *aux UNUSED)
+cache_hash_fun (const struct hash_elem *e, void *aux UNUSED)
 {
-  const struct cache_elem *p = hash_entry (p_, struct cache_elem, buf_hash_elem);
-  return p->secId;
+  const struct cache_elem* ce = hash_entry(e, struct cache_elem, buf_hash_elem);
+  return ce->secId;
 }
 
 /* Returns true if sector a precedes sector b. */
 bool
-cache_elem_cmp (const struct hash_elem *a_, const struct hash_elem *b_,
+cache_elem_cmp (const struct hash_elem *a, const struct hash_elem *b,
            void *aux UNUSED)
 {
-  const struct cache_elem *a = hash_entry (a_, struct cache_elem, buf_hash_elem);
-  const struct cache_elem *b = hash_entry (b_, struct cache_elem, buf_hash_elem);
-  return a->secId < b->secId;
+  const struct cache_elem* a1 = hash_entry(a, struct cache_elem, buf_hash_elem);
+  const struct cache_elem* b1 = hash_entry(b, struct cache_elem, buf_hash_elem);
+  return a1->secId < b1->secId;
 }
 
 /* Returns a hash value cache entry ce indexed by cache address. */
 unsigned
-evic_cache_hash_fun (const struct hash_elem *p_, void *aux UNUSED)
+evic_cache_hash_fun (const struct hash_elem *e, void *aux UNUSED)
 {
-  const struct cache_elem *ce = hash_entry (p_, struct cache_elem, evic_buf_hash_elem);
+  const struct cache_elem* ce = hash_entry(e, struct cache_elem, evic_buf_hash_elem);
   return (unsigned)ce->ch_addr;
 }
 
 /* Returns true if sector a precedes sector b. */
 bool
-evic_cache_elem_cmp (const struct hash_elem *a_, const struct hash_elem *b_,
+evic_cache_elem_cmp (const struct hash_elem *a, const struct hash_elem *b,
            void *aux UNUSED)
 {
-  const struct cache_elem *a = hash_entry (a_, struct cache_elem, evic_buf_hash_elem);
-  const struct cache_elem *b = hash_entry (b_, struct cache_elem, evic_buf_hash_elem);
-  return (unsigned)a->ch_addr < (unsigned)b->ch_addr;
+  const struct cache_elem *a1 = hash_entry (a, struct cache_elem, evic_buf_hash_elem);
+  const struct cache_elem *b1 = hash_entry (b, struct cache_elem, evic_buf_hash_elem);
+  return (unsigned)a1->ch_addr < (unsigned)b1->ch_addr;
 }
 
 /* Returns cache enry for the given sector, or NULL if sector
