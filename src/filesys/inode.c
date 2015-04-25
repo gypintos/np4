@@ -779,12 +779,21 @@ inode_alloc(struct inode_disk *i_d, off_t length)
 void
 inode_dealloc_block (block_sector_t *sector, size_t size)
 {
-  unsigned int i;
-  struct indirect_block block;
-  get_sec_from_cache(*sector, &block, 0, BLOCK_SECTOR_SIZE);
-  for (i = 0; i < size; i++)
-    free_map_release(block.ptr[i], 1);
+  // unsigned int i;
+  // struct indirect_block block;
+  // get_sec_from_cache(*sector, &block, 0, BLOCK_SECTOR_SIZE);
+  // for (i = 0; i < size; i++)
+  //   free_map_release(block.ptr[i], 1);
+  // free_map_release(*sector, 1);
+
+  struct indirect_block b;
+  get_sec_from_cache(*sector, &b, 0, BLOCK_SECTOR_SIZE);
+  int i = 0; 
+  for (; i<size; i++){
+    free_map_release(b.ptr[i], 1);
+  }
   free_map_release(*sector, 1);
+
 }
 
 /* Deallocate inode */
@@ -798,28 +807,10 @@ inode_dealloc (struct inode_disk *i_d)
   size_t i_sec_cnt = bytes_to_indirect_sectors(i_d->length);
   size_t d_sec_cnt = bytes_to_doubly_indirect_sector(i_d->length);
 
-  // Deallocate direct blocks
-  // while (sec_cnt && idx < INDIRECT_INDEX)
-  // {
-  //   free_map_release (i_d->ptr[idx], 1);
-  //   sec_cnt--;
-  //   idx++;
-  // }
   for (; sec_cnt > 0 && idx < INDIRECT_INDEX; idx++){
     free_map_release(i_d->ptr[idx], 1);
     sec_cnt--;
   }
-
-  // Deallocate indirect blocks
-  // while (i_sec_cnt && idx < DOUBLY_INDIRECT_INDEX)
-  // {
-  //   size_t size = sec_cnt < INDIRECT_BLOCK_PTRS ? sec_cnt
-  //                                               : INDIRECT_BLOCK_PTRS;
-  //   inode_dealloc_block(&i_d->ptr[idx], size);
-  //   sec_cnt -= size;
-  //   i_sec_cnt--;
-  //   idx++;
-  // }
 
   for (;i_sec_cnt >0 && idx < DOUBLY_INDIRECT_INDEX; idx++){
     size_t in_size = 0;
@@ -832,21 +823,6 @@ inode_dealloc (struct inode_disk *i_d)
     sec_cnt -= in_size;
     i_sec_cnt--;
   }
-
-  // Deallocate doubly indirect blocks
-  // if (d_sec_cnt)
-  // {
-  //   unsigned int i;
-  //   struct indirect_block block;
-  //   get_sec_from_cache(i_d->ptr[idx], &block, 0, BLOCK_SECTOR_SIZE);
-  //   for(i = 0; i < i_sec_cnt; i++) {
-  //     size_t size = sec_cnt < INDIRECT_BLOCK_PTRS ? sec_cnt
-  //                                                 : INDIRECT_BLOCK_PTRS;
-  //     inode_dealloc_block(&block.ptr[i], size);
-  //     sec_cnt -= size;
-  //   }
-  //   free_map_release(i_d->ptr[idx], 1);
-  // }
 
   if (d_sec_cnt > 0){
     struct indirect_block b;
