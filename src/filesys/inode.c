@@ -93,10 +93,18 @@ bytes_to_sectors (off_t size)
 static inline size_t
 bytes_to_indirect_sectors (off_t size)
 {
-  if (size <= BLOCK_SECTOR_SIZE * DIRECT_BLOCKS)
-      return 0;
-  size -= BLOCK_SECTOR_SIZE * DIRECT_BLOCKS;
-  return DIV_ROUND_UP(size, BLOCK_SECTOR_SIZE * INDIRECT_BLOCK_PTRS);
+  // if (size <= BLOCK_SECTOR_SIZE * DIRECT_BLOCKS)
+  //     return 0;
+  // size -= BLOCK_SECTOR_SIZE * DIRECT_BLOCKS;
+  // return DIV_ROUND_UP(size, BLOCK_SECTOR_SIZE * INDIRECT_BLOCK_PTRS);
+
+  if (size <= BLOCK_SECTOR_SIZE*DIRECT_BLOCKS){
+    return 0;
+  } else {
+    size -= BLOCK_SECTOR_SIZE*DIRECT_BLOCKS;
+    return DIV_ROUND_UP(size,BLOCK_SECTOR_SIZE*INDIRECT_BLOCK_PTRS);
+  }
+
 }
 
 /* Returns the number of doubly indirect sectors to allocate for an
@@ -104,14 +112,17 @@ bytes_to_indirect_sectors (off_t size)
 static inline size_t
 bytes_to_doubly_indirect_sector (off_t size)
 {
-  off_t bound = BLOCK_SECTOR_SIZE * (DIRECT_BLOCKS +
-                                     INDIRECT_BLOCKS * INDIRECT_BLOCK_PTRS);
-  return size <= bound ? 0 : DOUBLY_INDIRECT_BLOCKS;
+  // off_t bound = BLOCK_SECTOR_SIZE * (DIRECT_BLOCKS +
+  //                                    INDIRECT_BLOCKS * INDIRECT_BLOCK_PTRS);
+  // return size <= bound ? 0 : DOUBLY_INDIRECT_BLOCKS;
+
+  if (size <= BLOCK_SECTOR_SIZE*(DIRECT_BLOCKS+INDIRECT_BLOCKS * INDIRECT_BLOCK_PTRS)){
+    return 0;
+  } else {
+    return DOUBLY_INDIRECT_BLOCKS;
+  }
 }
 /** NEW ADDED HERE **/
-
-
-
 
 /* Returns the block device sector that contains byte offset POS
    within INODE.
@@ -676,33 +687,12 @@ inode_extend_nested_block (struct inode_disk *i_d, size_t sec_cnt,
 {
   static char ZBlock[BLOCK_SECTOR_SIZE];
   struct indirect_block nb;
-  // if (i_d->doubly_indirect_index == 0)
-  // {
-  //   if (!free_map_allocate(1, &b->ptr[i_d->indirect_index]))
-  //     return sec_cnt;
-  // }
-  // else
-  // {
-  //   get_sec_from_cache(b->ptr[i_d->indirect_index], &nb, 0,
-  //                   BLOCK_SECTOR_SIZE);
-  // }
 
   if (i_d->doubly_indirect_index!=0){
     get_sec_from_cache(b->ptr[i_d->indirect_index], &nb, 0, BLOCK_SECTOR_SIZE);
   } else if (free_map_allocate(1, &b->ptr[i_d->indirect_index]) == NULL){
     return sec_cnt;
   }
-
-  // while (i_d->doubly_indirect_index < INDIRECT_BLOCK_PTRS)
-  // {
-  //   if(!free_map_allocate(1, &nb.ptr[i_d->doubly_indirect_index]))
-  //     return sec_cnt;
-  //   buf_to_cache(nb.ptr[i_d->doubly_indirect_index],ZBlock, 0, BLOCK_SECTOR_SIZE);
-  //   i_d->doubly_indirect_index++;
-  //   sec_cnt--;
-  //   if (sec_cnt == 0)
-  //     break;
-  // }
 
   for (; i_d->doubly_indirect_index < INDIRECT_BLOCK_PTRS; ){
     if (free_map_allocate(1, &nb.ptr[i_d->doubly_indirect_index])){
@@ -727,29 +717,11 @@ size_t
 inode_extend_doubly_indirect_block (struct inode_disk *i_d, size_t sec_cnt)
 {
   struct indirect_block b;
-  // if (i_d->indirect_index == 0 && i_d->doubly_indirect_index == 0)
-  // {
-  //   free_map_allocate(1, &i_d->ptr[i_d->direct_index]);
-  // }
-  // else
-  // {
-  //   get_sec_from_cache(i_d->ptr[i_d->direct_index], &b, 0,
-  //                   BLOCK_SECTOR_SIZE);
-  // }
-
   if (i_d->indirect_index != 0 || i_d->doubly_indirect_index != 0){
     get_sec_from_cache(i_d->ptr[i_d->direct_index], &b, 0,BLOCK_SECTOR_SIZE);
   } else {
     free_map_allocate(1, &i_d->ptr[i_d->direct_index]);
   }
-
-  // while (i_d->indirect_index < INDIRECT_BLOCK_PTRS)
-  // {
-  //   sec_cnt = inode_extend_nested_block(i_d, sec_cnt, &b);
-  //   if (sec_cnt == 0)
-  //     break;
-  // }
-
   for (;i_d->indirect_index < INDIRECT_BLOCK_PTRS;){
     sec_cnt = inode_extend_nested_block(i_d, sec_cnt, &b);
     if (sec_cnt == 0) break;
@@ -796,13 +768,6 @@ inode_alloc(struct inode_disk *i_d, off_t length)
 void
 inode_dealloc_block (block_sector_t *sector, size_t size)
 {
-  // unsigned int i;
-  // struct indirect_block block;
-  // get_sec_from_cache(*sector, &block, 0, BLOCK_SECTOR_SIZE);
-  // for (i = 0; i < size; i++)
-  //   free_map_release(block.ptr[i], 1);
-  // free_map_release(*sector, 1);
-
   struct indirect_block b;
   get_sec_from_cache(*sector, &b, 0, BLOCK_SECTOR_SIZE);
   int i = 0; 
