@@ -468,14 +468,11 @@ inode_allow_write (struct inode *inode)
 off_t
 inode_length (const struct inode *inode)
 {
-  // return inode->data.length;
-  /** NEW ADDED HERE **/
-  off_t result;
-  struct inode_disk *i_d = (struct inode_disk *)
-                            get_meta_inode(inode->sector);
-  result = i_d->length;
+  off_t res;
+  struct inode_disk *i_d = (struct inode_disk *) get_meta_inode(inode->sector);
+  res = i_d->length;
   free_meta_inode(inode->sector, false);
-  return result;
+  return res;
 }
 
 
