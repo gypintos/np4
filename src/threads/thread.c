@@ -716,7 +716,7 @@ static void wakeup_threads(void) {
     } else {
       t->status = THREAD_READY;
       tmp = e ;
-      e = list_next (e)
+      e = list_next (e);
       list_remove(tmp);
       list_push_back(&ready_list, &t->elem);
     }
