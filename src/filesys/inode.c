@@ -724,27 +724,39 @@ inode_extend_nested_block (struct inode_disk *i_d, size_t sec_cnt,
 }
 
 size_t
-inode_extend_doubly_indirect_block (struct inode_disk *i_d, size_t sectors)
+inode_extend_doubly_indirect_block (struct inode_disk *i_d, size_t sec_cnt)
 {
-  struct indirect_block block;
-  if (i_d->indirect_index == 0 && i_d->doubly_indirect_index == 0)
-  {
+  struct indirect_block b;
+  // if (i_d->indirect_index == 0 && i_d->doubly_indirect_index == 0)
+  // {
+  //   free_map_allocate(1, &i_d->ptr[i_d->direct_index]);
+  // }
+  // else
+  // {
+  //   get_sec_from_cache(i_d->ptr[i_d->direct_index], &b, 0,
+  //                   BLOCK_SECTOR_SIZE);
+  // }
+
+  if (i_d->indirect_index != 0 || i_d->doubly_indirect_index != 0){
+    get_sec_from_cache(i_d->ptr[i_d->direct_index], &b, 0,BLOCK_SECTOR_SIZE);
+  } else {
     free_map_allocate(1, &i_d->ptr[i_d->direct_index]);
   }
-  else
-  {
-    get_sec_from_cache(i_d->ptr[i_d->direct_index], &block, 0,
-                    BLOCK_SECTOR_SIZE);
+
+  // while (i_d->indirect_index < INDIRECT_BLOCK_PTRS)
+  // {
+  //   sec_cnt = inode_extend_nested_block(i_d, sec_cnt, &b);
+  //   if (sec_cnt == 0)
+  //     break;
+  // }
+
+  for (;i_d->indirect_index < INDIRECT_BLOCK_PTRS;){
+    sec_cnt = inode_extend_nested_block(i_d, sec_cnt, &b);
+    if (sec_cnt == 0) break;
   }
-  while (i_d->indirect_index < INDIRECT_BLOCK_PTRS)
-  {
-    sectors = inode_extend_nested_block(i_d, sectors, &block);
-    if (sectors == 0)
-      break;
-  }
-  buf_to_cache(i_d->ptr[i_d->direct_index], &block, 0,
-                 BLOCK_SECTOR_SIZE);
-  return sectors;
+
+  buf_to_cache(i_d->ptr[i_d->direct_index], &b, 0,BLOCK_SECTOR_SIZE);
+  return sec_cnt;
 }
 
 /* Allocate inode_disk with size as LENGTH*/
