@@ -54,40 +54,23 @@ struct inode
    returns the same `struct inode'. */
 static struct list open_inodes;
 
-
-/** NEW ADDED HERE **/
-bool inode_alloc(struct inode_disk *disk_inode, off_t length);
-void inode_dealloc (struct inode_disk *disk_inode);
-void inode_dealloc_block (block_sector_t *sector, size_t size);
-size_t
-inode_extend_indirect_block (struct inode_disk *i_d, size_t sectors);
-size_t
-inode_extend_nested_block (struct inode_disk *i_d, size_t sectors,
+bool inode_allocate(struct inode_disk *disk_inode, off_t length);
+void inode_deallocate (struct inode_disk *disk_inode);
+void inode_dealloc_helper (block_sector_t *sector, size_t size);
+size_t inode_inc_indir_blk (struct inode_disk *i_d, size_t sectors);
+size_t inode_inc_dou_indir_blk (struct inode_disk *i_d, size_t sectors);
+size_t inode_inc_nest_blk (struct inode_disk *i_d, size_t sectors,
                            struct indir_blk *block);
-size_t
-inode_extend_doubly_indirect_block (struct inode_disk *i_d, size_t sectors);
-
 
 /* Returns the number of sectors to allocate for an inode SIZE
    bytes long. */
-static inline size_t
-bytes_to_sectors (off_t size)
+static inline size_t bytes_to_sectors (off_t size)
 {
   return DIV_ROUND_UP (size, BLOCK_SECTOR_SIZE);
 }
 
-
-/** NEW ADDED HERE **/
-/* Returns the number of indirect sectors to allocate for an inode SIZE
-   bytes long. */
-static inline size_t
-bytes_to_indirect_sectors (off_t size)
+static inline size_t bytes_to_indir_sectors (off_t size)
 {
-  // if (size <= BLOCK_SECTOR_SIZE * N_DIR_BLK)
-  //     return 0;
-  // size -= BLOCK_SECTOR_SIZE * N_DIR_BLK;
-  // return DIV_ROUND_UP(size, BLOCK_SECTOR_SIZE * N_PTR_IN_DIR_BLK);
-
   if (size <= BLOCK_SECTOR_SIZE*N_DIR_BLK){
     return 0;
   } else {
@@ -97,29 +80,20 @@ bytes_to_indirect_sectors (off_t size)
 
 }
 
-/* Returns the number of doubly indirect sectors to allocate for an
-   inode SIZE bytes long. */
-static inline size_t
-bytes_to_doubly_indirect_sector (off_t size)
+static inline size_t bytes_to_dou_indir_sectors (off_t size)
 {
-  // off_t bound = BLOCK_SECTOR_SIZE * (N_DIR_BLK +
-  //                                    N_IN_DIR_BLK * N_PTR_IN_DIR_BLK);
-  // return size <= bound ? 0 : N_DOU_IN_DIR_BLK;
-
   if (size <= BLOCK_SECTOR_SIZE*(N_DIR_BLK+N_IN_DIR_BLK * N_PTR_IN_DIR_BLK)){
     return 0;
   } else {
     return N_DOU_IN_DIR_BLK;
   }
 }
-/** NEW ADDED HERE **/
+
 
 /* Returns the block device sector that contains byte offset POS
    within INODE.
    Returns -1 if INODE does not contain data for a byte at offset
    POS. */
-
-   /** NEW ADDED HERE **/
 static block_sector_t
 byte_to_sector (const struct inode *inode, off_t pos,  off_t inc_size) 
 {
@@ -189,7 +163,7 @@ inode_create (block_sector_t sector, off_t length)
   // if (disk_inode != NULL)
   //   {
   //     disk_inode->magic = INODE_MAGIC;
-  //     if(length == 0 || inode_alloc(disk_inode, length)) {
+  //     if(length == 0 || inode_allocate(disk_inode, length)) {
   //       disk_inode->length = length;
   //       buf_to_cache(sector, disk_inode, 0, BLOCK_SECTOR_SIZE);
   //       success = true;
@@ -201,7 +175,7 @@ inode_create (block_sector_t sector, off_t length)
 
   if (disk_inode){
     disk_inode->magic = INODE_MAGIC;
-    if (length == 0 || inode_alloc(disk_inode, length) == true){
+    if (length == 0 || inode_allocate(disk_inode, length) == true){
       disk_inode->length = length;
       buf_to_cache(sector, disk_inode, 0, BLOCK_SECTOR_SIZE);
       success = true;
@@ -293,7 +267,7 @@ inode_close (struct inode *inode)
       if (inode->removed) 
         {
           struct inode_disk *i_d =(struct inode_disk*) get_meta_inode(inode->sector);
-          inode_dealloc(i_d);
+          inode_deallocate(i_d);
           free_meta_inode(inode->sector, true);
           free_map_release (inode->sector, 1);
         }
@@ -379,7 +353,7 @@ inode_write_at (struct inode *inode, const void *buffer, off_t size,
       inode_acquire_lock(inode);
     }
     i_d = (struct inode_disk *) get_meta_inode(inode->sector);
-    isInc = inode_alloc(i_d, offset + size);
+    isInc = inode_allocate(i_d, offset + size);
     inc_size = offset + size;
     if (isInc == false) {
       if (lock_acquired = false){
@@ -469,7 +443,7 @@ inode_length (const struct inode *inode)
 /* Allocate indirect blocks for inode.
    Return remaining size of sectors that need to allocate */
 size_t
-inode_extend_indirect_block (struct inode_disk *i_d, size_t sec_cnt)
+inode_inc_indir_blk (struct inode_disk *i_d, size_t sec_cnt)
 {
   static char ZBlock[BLOCK_SECTOR_SIZE];
   struct indir_blk b;
@@ -497,7 +471,7 @@ inode_extend_indirect_block (struct inode_disk *i_d, size_t sec_cnt)
 }
 
 size_t
-inode_extend_nested_block (struct inode_disk *i_d, size_t sec_cnt,
+inode_inc_nest_blk (struct inode_disk *i_d, size_t sec_cnt,
                            struct indir_blk *b)
 {
   static char ZBlock[BLOCK_SECTOR_SIZE];
@@ -529,7 +503,7 @@ inode_extend_nested_block (struct inode_disk *i_d, size_t sec_cnt,
 }
 
 size_t
-inode_extend_doubly_indirect_block (struct inode_disk *i_d, size_t sec_cnt)
+inode_inc_dou_indir_blk (struct inode_disk *i_d, size_t sec_cnt)
 {
   struct indir_blk b;
   if (i_d->indir_ptr != 0 || i_d->d_indir_ptr != 0){
@@ -538,7 +512,7 @@ inode_extend_doubly_indirect_block (struct inode_disk *i_d, size_t sec_cnt)
     free_map_allocate(1, &i_d->ptr[i_d->dir_ptr]);
   }
   for (;i_d->indir_ptr < N_PTR_IN_DIR_BLK;){
-    sec_cnt = inode_extend_nested_block(i_d, sec_cnt, &b);
+    sec_cnt = inode_inc_nest_blk(i_d, sec_cnt, &b);
     if (sec_cnt == 0) break;
   }
 
@@ -548,7 +522,7 @@ inode_extend_doubly_indirect_block (struct inode_disk *i_d, size_t sec_cnt)
 
 /* Allocate inode_disk with size as LENGTH*/
 bool
-inode_alloc(struct inode_disk *i_d, off_t length)
+inode_allocate(struct inode_disk *i_d, off_t length)
 {
   static char ZBlock[BLOCK_SECTOR_SIZE];
 
@@ -568,12 +542,12 @@ inode_alloc(struct inode_disk *i_d, off_t length)
 
 
   for(;i_d->dir_ptr < IN_DIR_END;){
-    size = inode_extend_indirect_block(i_d, size);
+    size = inode_inc_indir_blk(i_d, size);
     if (size == 0) return true;
   }
 
   if (i_d->dir_ptr == IN_DIR_END) {
-    size = inode_extend_doubly_indirect_block(i_d, size);
+    size = inode_inc_dou_indir_blk(i_d, size);
   } 
 
   return size == 0;
@@ -581,7 +555,7 @@ inode_alloc(struct inode_disk *i_d, off_t length)
 
 /* Deallocate all sectors in an indirect block*/
 void
-inode_dealloc_block (block_sector_t *sector, size_t size)
+inode_dealloc_helper (block_sector_t *sector, size_t size)
 {
   struct indir_blk b;
   get_sec_from_cache(*sector, &b, 0, BLOCK_SECTOR_SIZE);
@@ -595,14 +569,14 @@ inode_dealloc_block (block_sector_t *sector, size_t size)
 
 /* Deallocate inode */
 void
-inode_dealloc (struct inode_disk *i_d)
+inode_deallocate (struct inode_disk *i_d)
 {
   if (i_d->length == 0)
     return;
   unsigned int idx = 0;
   size_t sec_cnt = bytes_to_sectors(i_d->length);
-  size_t i_sec_cnt = bytes_to_indirect_sectors(i_d->length);
-  size_t d_sec_cnt = bytes_to_doubly_indirect_sector(i_d->length);
+  size_t i_sec_cnt = bytes_to_indir_sectors(i_d->length);
+  size_t d_sec_cnt = bytes_to_dou_indir_sectors(i_d->length);
 
   for (; sec_cnt > 0 && idx < N_DIR_BLK; idx++){
     free_map_release(i_d->ptr[idx], 1);
@@ -616,7 +590,7 @@ inode_dealloc (struct inode_disk *i_d)
     } else {
       in_size = N_PTR_IN_DIR_BLK;
     }
-    inode_dealloc_block(&i_d->ptr[idx], in_size);
+    inode_dealloc_helper(&i_d->ptr[idx], in_size);
     sec_cnt -= in_size;
     i_sec_cnt--;
   }
@@ -632,7 +606,7 @@ inode_dealloc (struct inode_disk *i_d)
       } else {
         in_size = N_PTR_IN_DIR_BLK;
       }
-      inode_dealloc_block(&b.ptr[i], in_size);
+      inode_dealloc_helper(&b.ptr[i], in_size);
       sec_cnt -= in_size;
     }
     free_map_release(i_d->ptr[idx],1);
