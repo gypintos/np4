@@ -693,7 +693,7 @@ static bool readdir (int fd, char *name) {
     if (!dir) return false;
     if (!dir_readdir(dir, name)) 
         return false;
-    while( strcmp(name, ".") == 0 || strcmp(name, ".." == 0 ){
+    while( strcmp(name, ".") == 0 || strcmp(name, "..") == 0 ){
         if (!dir_readdir(dir, name)) 
             return false;
     }
