@@ -746,7 +746,7 @@ inode_extend_doubly_indirect_block (struct inode_disk *i_d, size_t sectors)
 bool
 inode_alloc(struct inode_disk *i_d, off_t length)
 {
-  static char zeros[BLOCK_SECTOR_SIZE];
+  static char ZBlock[BLOCK_SECTOR_SIZE];
   // Initial i_d->length is 0.
   size_t size = bytes_to_sectors(length) - bytes_to_sectors(i_d->length);
 
@@ -754,30 +754,49 @@ inode_alloc(struct inode_disk *i_d, off_t length)
     return true;
 
   /* Extend to direct blocks */
-  while (i_d->direct_index < INDIRECT_INDEX)
-  {
-    if (!free_map_allocate (1, &i_d->ptr[i_d->direct_index])) {
+  // while (i_d->direct_index < INDIRECT_INDEX)
+  // {
+  //   if (!free_map_allocate (1, &i_d->ptr[i_d->direct_index])) {
+  //     return false;
+  //   }
+  //   buf_to_cache(i_d->ptr[i_d->direct_index], zeros, 0, BLOCK_SECTOR_SIZE);
+  //   i_d->direct_index++;
+  //   size--;
+  //   if (size == 0)
+  //     return true;
+  // }
+
+  for (; i_d->direct_index < INDIRECT_INDEX; i_d->direct_index++){
+    if (!free_map_allocate(1, &i_d->ptr[i_d->direct_index])) 
       return false;
-    }
-    buf_to_cache(i_d->ptr[i_d->direct_index], zeros, 0, BLOCK_SECTOR_SIZE);
-    i_d->direct_index++;
+    buf_to_cache(i_d->ptr[i_d->direct_index], ZBlock, 0, BLOCK_SECTOR_SIZE);
     size--;
-    if (size == 0)
-      return true;
+    if (size == 0) return true;
   }
 
   /* Extend to indirect blocks */
-  while (i_d->direct_index < DOUBLY_INDIRECT_INDEX)
-  {
-    size = inode_extend_indirect_block(i_d, size);
-    if (size == 0)
-      return true;
-  }
+  // while (i_d->direct_index < DOUBLY_INDIRECT_INDEX)
+  // {
+  //   size = inode_extend_indirect_block(i_d, size);
+  //   if (size == 0)
+  //     return true;
+  // }
+  
 
   /* Extend to doubly indirect blocks */
-  if (i_d->direct_index == DOUBLY_INDIRECT_INDEX) {
-    size = inode_extend_doubly_indirect_block(i_d, size);
+  // if (i_d->direct_index == DOUBLY_INDIRECT_INDEX) {
+  //   size = inode_extend_doubly_indirect_block(i_d, size);
+  // }
+
+  for(;i_d->direct_index <= DOUBLY_INDIRECT_INDEX;){
+    if (i_d->direct_index == DOUBLY_INDIRECT_INDEX) {
+      size = inode_extend_doubly_indirect_block(i_d, size);
+    } else {
+      size = inode_extend_indirect_block(i_d, size);
+    if (size == 0) return true;
+    }
   }
+
   return size == 0;
 }
 
