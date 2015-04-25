@@ -647,38 +647,11 @@ inode_extend_indirect_block (struct inode_disk *i_d, size_t sec_cnt)
 {
   static char ZBlock[BLOCK_SECTOR_SIZE];
   struct indirect_block b;
-
-  // if (i_d->indirect_index == 0)
-  // {
-  //   // Allocate a new indirect block
-  //   if (!free_map_allocate(1, &i_d->ptr[i_d->direct_index])) {
-  //     return sec_cnt;
-  //   }
-  // }
-  // else
-  // {
-  //   get_sec_from_cache(i_d->ptr[i_d->direct_index], &b, 0, BLOCK_SECTOR_SIZE);
-  // }
-
-
   if (i_d->indirect_index!=0){
     get_sec_from_cache(i_d->ptr[i_d->direct_index], &b, 0, BLOCK_SECTOR_SIZE);
   } else if (free_map_allocate(1, &i_d->ptr[i_d->direct_index]) == NULL){
     return sec_cnt;
   }
-
-  // while (i_d->indirect_index < INDIRECT_BLOCK_PTRS)
-  // {
-  //   if (!free_map_allocate(1, &b.ptr[i_d->indirect_index]))
-  //     return sec_cnt;
-  //   buf_to_cache(b.ptr[i_d->indirect_index], ZBlock, 0,
-  //                  BLOCK_SECTOR_SIZE);
-  //   i_d->indirect_index++;
-  //   sec_cnt--;
-  //   if (sec_cnt == 0)
-  //     break;
-  // }
-
   for (; i_d->indirect_index < INDIRECT_BLOCK_PTRS; ){
     if (free_map_allocate(1, &b.ptr[i_d->indirect_index])){
       buf_to_cache(b.ptr[i_d->indirect_index], ZBlock, 0,BLOCK_SECTOR_SIZE);
@@ -689,58 +662,65 @@ inode_extend_indirect_block (struct inode_disk *i_d, size_t sec_cnt)
       return sec_cnt;
     }
   }
-
-  // Update the indirect block
   buf_to_cache(i_d->ptr[i_d->direct_index], &b, 0, BLOCK_SECTOR_SIZE);
-  // if (i_d->indirect_index == INDIRECT_BLOCK_PTRS)
-  // {
-  //   // the indirect block is full
-  //   i_d->indirect_index = 0;
-  //   i_d->direct_index++;
-  // }
   if (i_d->indirect_index == INDIRECT_BLOCK_PTRS){
     i_d->direct_index++;
     i_d->indirect_index = 0;
   }
-  
   return sec_cnt;
 }
 
 size_t
-inode_extend_nested_block (struct inode_disk *i_d, size_t sectors,
-                           struct indirect_block *block)
+inode_extend_nested_block (struct inode_disk *i_d, size_t sec_cnt,
+                           struct indirect_block *b)
 {
   static char ZBlock[BLOCK_SECTOR_SIZE];
-  struct indirect_block nested_block;
-  if (i_d->doubly_indirect_index == 0)
-  {
-    if (!free_map_allocate(1, &block->ptr[i_d->indirect_index]))
-      return sectors;
+  struct indirect_block nb;
+  // if (i_d->doubly_indirect_index == 0)
+  // {
+  //   if (!free_map_allocate(1, &b->ptr[i_d->indirect_index]))
+  //     return sec_cnt;
+  // }
+  // else
+  // {
+  //   get_sec_from_cache(b->ptr[i_d->indirect_index], &nb, 0,
+  //                   BLOCK_SECTOR_SIZE);
+  // }
+
+  if (i_d->doubly_indirect_index!=0){
+    get_sec_from_cache(b->ptr[i_d->indirect_index], &nb, 0, BLOCK_SECTOR_SIZE);
+  } else if (free_map_allocate(1, &b->ptr[i_d->indirect_index]) == NULL){
+    return sec_cnt;
   }
-  else
-  {
-    get_sec_from_cache(block->ptr[i_d->indirect_index], &nested_block, 0,
-                    BLOCK_SECTOR_SIZE);
+
+  // while (i_d->doubly_indirect_index < INDIRECT_BLOCK_PTRS)
+  // {
+  //   if(!free_map_allocate(1, &nb.ptr[i_d->doubly_indirect_index]))
+  //     return sec_cnt;
+  //   buf_to_cache(nb.ptr[i_d->doubly_indirect_index],ZBlock, 0, BLOCK_SECTOR_SIZE);
+  //   i_d->doubly_indirect_index++;
+  //   sec_cnt--;
+  //   if (sec_cnt == 0)
+  //     break;
+  // }
+
+  for (; i_d->doubly_indirect_index < INDIRECT_BLOCK_PTRS; ){
+    if (free_map_allocate(1, &nb.ptr[i_d->doubly_indirect_index])){
+      buf_to_cache(nb.ptr[i_d->doubly_indirect_index],ZBlock, 0, BLOCK_SECTOR_SIZE);
+      i_d->doubly_indirect_index++;
+      sec_cnt--;
+      if (sec_cnt == 0) break;
+    } else {
+      return sec_cnt;
+    }
   }
-  while (i_d->doubly_indirect_index < INDIRECT_BLOCK_PTRS)
-  {
-    if(!free_map_allocate(1, &nested_block.ptr[i_d->doubly_indirect_index]))
-      return sectors;
-    buf_to_cache(nested_block.ptr[i_d->doubly_indirect_index],
-                   ZBlock, 0, BLOCK_SECTOR_SIZE);
-    i_d->doubly_indirect_index++;
-    sectors--;
-    if (sectors == 0)
-      break;
-  }
-  buf_to_cache(block->ptr[i_d->indirect_index], &nested_block, 0,
-                 BLOCK_SECTOR_SIZE);
-  if (i_d->doubly_indirect_index == INDIRECT_BLOCK_PTRS)
-  {
-    i_d->doubly_indirect_index = 0;
+
+  buf_to_cache(b->ptr[i_d->indirect_index], &nb, 0,BLOCK_SECTOR_SIZE);
+  if (i_d->doubly_indirect_index == INDIRECT_BLOCK_PTRS){
     i_d->indirect_index++;
+    i_d->doubly_indirect_index = 0;
   }
-  return sectors;
+  return sec_cnt;
 }
 
 size_t
