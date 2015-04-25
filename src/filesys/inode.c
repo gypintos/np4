@@ -775,27 +775,27 @@ inode_alloc(struct inode_disk *i_d, off_t length)
   }
 
   /* Extend to indirect blocks */
-  // while (i_d->direct_index < DOUBLY_INDIRECT_INDEX)
-  // {
-  //   size = inode_extend_indirect_block(i_d, size);
-  //   if (size == 0)
-  //     return true;
-  // }
+  while (i_d->direct_index < DOUBLY_INDIRECT_INDEX)
+  {
+    size = inode_extend_indirect_block(i_d, size);
+    if (size == 0)
+      return true;
+  }
   
 
   /* Extend to doubly indirect blocks */
-  // if (i_d->direct_index == DOUBLY_INDIRECT_INDEX) {
-  //   size = inode_extend_doubly_indirect_block(i_d, size);
-  // }
-
-  for(;i_d->direct_index <= DOUBLY_INDIRECT_INDEX;){
-    if (i_d->direct_index == DOUBLY_INDIRECT_INDEX) {
-      size = inode_extend_doubly_indirect_block(i_d, size);
-    } else {
-      size = inode_extend_indirect_block(i_d, size);
-    if (size == 0) return true;
-    }
+  if (i_d->direct_index == DOUBLY_INDIRECT_INDEX) {
+    size = inode_extend_doubly_indirect_block(i_d, size);
   }
+
+  // for(;i_d->direct_index <= DOUBLY_INDIRECT_INDEX;){
+  //   if (i_d->direct_index == DOUBLY_INDIRECT_INDEX) {
+  //     size = inode_extend_doubly_indirect_block(i_d, size);
+  //   } else {
+  //     size = inode_extend_indirect_block(i_d, size);
+  //   if (size == 0) return true;
+  //   }
+  // }
 
   return size == 0;
 }
