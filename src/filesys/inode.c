@@ -757,7 +757,7 @@ inode_alloc(struct inode_disk *i_d, off_t length)
     if (!free_map_allocate(1, &i_d->ptr[i_d->direct_index])) 
       return false;
     buf_to_cache(i_d->ptr[i_d->direct_index], ZBlock, 0, BLOCK_SECTOR_SIZE);
-    i_d->direct_index++
+    i_d->direct_index++;
     size--;
     if (size == 0) return true;
   }
