@@ -12,15 +12,14 @@
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
 
-/** NEW ADDED HERE **/
-#define DIRECT_BLOCKS 12
-#define INDIRECT_BLOCKS 1
-#define DOUBLY_INDIRECT_BLOCKS 1
-#define DIRECT_INDEX 0
-#define INDIRECT_INDEX DIRECT_BLOCKS
-#define DOUBLY_INDIRECT_INDEX DIRECT_BLOCKS + INDIRECT_BLOCKS
-#define INODE_BLOCK_PTRS DOUBLY_INDIRECT_INDEX + DOUBLY_INDIRECT_BLOCKS
-#define INDIRECT_BLOCK_PTRS 128
+#define N_DIR_BLK 12
+#define N_IN_DIR_BLK 1
+#define N_DOU_IN_DIR_BLK 1
+// #define DIRECT_INDEX 0
+// #define INDIRECT_INDEX N_DIR_BLK
+#define IN_DIR_END N_DIR_BLK + N_IN_DIR_BLK
+#define N_PTR_INODE IN_DIR_END + N_DOU_IN_DIR_BLK
+#define N_PTR_IN_DIR_BLK 128
 
 /* On-disk inode.
    Must be exactly BLOCK_SECTOR_SIZE bytes long. */
@@ -37,14 +36,14 @@ struct inode_disk
     uint32_t direct_index;                 /* Direct block pointer index */
     uint32_t indirect_index;               /* Indirect pointer index */
     uint32_t doubly_indirect_index;        /* Doubly indirect pointer index */
-    block_sector_t ptr[INODE_BLOCK_PTRS];  /* Pointers to blocks */
+    block_sector_t ptr[N_PTR_INODE];  /* Pointers to blocks */
     uint32_t unused[109];                  /* Not used. */
   };
 
   /** NEW ADDED HERE **/
 struct indirect_block
   {
-    block_sector_t ptr[INDIRECT_BLOCK_PTRS];  /* Pointers to blocks */
+    block_sector_t ptr[N_PTR_IN_DIR_BLK];  /* Pointers to blocks */
   };
 
 /* In-memory inode. */
@@ -93,16 +92,16 @@ bytes_to_sectors (off_t size)
 static inline size_t
 bytes_to_indirect_sectors (off_t size)
 {
-  // if (size <= BLOCK_SECTOR_SIZE * DIRECT_BLOCKS)
+  // if (size <= BLOCK_SECTOR_SIZE * N_DIR_BLK)
   //     return 0;
-  // size -= BLOCK_SECTOR_SIZE * DIRECT_BLOCKS;
-  // return DIV_ROUND_UP(size, BLOCK_SECTOR_SIZE * INDIRECT_BLOCK_PTRS);
+  // size -= BLOCK_SECTOR_SIZE * N_DIR_BLK;
+  // return DIV_ROUND_UP(size, BLOCK_SECTOR_SIZE * N_PTR_IN_DIR_BLK);
 
-  if (size <= BLOCK_SECTOR_SIZE*DIRECT_BLOCKS){
+  if (size <= BLOCK_SECTOR_SIZE*N_DIR_BLK){
     return 0;
   } else {
-    size -= BLOCK_SECTOR_SIZE*DIRECT_BLOCKS;
-    return DIV_ROUND_UP(size,BLOCK_SECTOR_SIZE*INDIRECT_BLOCK_PTRS);
+    size -= BLOCK_SECTOR_SIZE*N_DIR_BLK;
+    return DIV_ROUND_UP(size,BLOCK_SECTOR_SIZE*N_PTR_IN_DIR_BLK);
   }
 
 }
@@ -112,14 +111,14 @@ bytes_to_indirect_sectors (off_t size)
 static inline size_t
 bytes_to_doubly_indirect_sector (off_t size)
 {
-  // off_t bound = BLOCK_SECTOR_SIZE * (DIRECT_BLOCKS +
-  //                                    INDIRECT_BLOCKS * INDIRECT_BLOCK_PTRS);
-  // return size <= bound ? 0 : DOUBLY_INDIRECT_BLOCKS;
+  // off_t bound = BLOCK_SECTOR_SIZE * (N_DIR_BLK +
+  //                                    N_IN_DIR_BLK * N_PTR_IN_DIR_BLK);
+  // return size <= bound ? 0 : N_DOU_IN_DIR_BLK;
 
-  if (size <= BLOCK_SECTOR_SIZE*(DIRECT_BLOCKS+INDIRECT_BLOCKS * INDIRECT_BLOCK_PTRS)){
+  if (size <= BLOCK_SECTOR_SIZE*(N_DIR_BLK+N_IN_DIR_BLK * N_PTR_IN_DIR_BLK)){
     return 0;
   } else {
-    return DOUBLY_INDIRECT_BLOCKS;
+    return N_DOU_IN_DIR_BLK;
   }
 }
 /** NEW ADDED HERE **/
@@ -141,23 +140,23 @@ byte_to_sector (const struct inode *inode, off_t pos,  off_t inc_size)
   if (pos > inc_size){
     res = -1;
   } else {
-    uint32_t indirect_block[INDIRECT_BLOCK_PTRS];
+    uint32_t indirect_block[N_PTR_IN_DIR_BLK];
     uint32_t index;
-    off_t direct_range = BLOCK_SECTOR_SIZE * DIRECT_BLOCKS;
-    off_t indirect_range = BLOCK_SECTOR_SIZE*(DIRECT_BLOCKS + INDIRECT_BLOCKS * INDIRECT_BLOCK_PTRS);
-    off_t indirect_size = BLOCK_SECTOR_SIZE * INDIRECT_BLOCK_PTRS;
+    off_t direct_range = BLOCK_SECTOR_SIZE * N_DIR_BLK;
+    off_t indirect_range = BLOCK_SECTOR_SIZE*(N_DIR_BLK + N_IN_DIR_BLK * N_PTR_IN_DIR_BLK);
+    off_t indirect_size = BLOCK_SECTOR_SIZE * N_PTR_IN_DIR_BLK;
 
     if (pos < direct_range){
       index = pos/ BLOCK_SECTOR_SIZE;
       res = i_d->ptr[index];
     } else if (pos < indirect_range){
       pos -= direct_range;
-      index = pos/indirect_size + DIRECT_BLOCKS;
+      index = pos/indirect_size + N_DIR_BLK;
       get_sec_from_cache(i_d->ptr[index],&indirect_block, 0, BLOCK_SECTOR_SIZE);
       pos %= indirect_size;
       res = indirect_block[pos/BLOCK_SECTOR_SIZE];
     } else {
-      get_sec_from_cache(i_d->ptr[DOUBLY_INDIRECT_INDEX], &indirect_block,0, 
+      get_sec_from_cache(i_d->ptr[IN_DIR_END], &indirect_block,0, 
         BLOCK_SECTOR_SIZE);
       pos -= indirect_range;
       index = pos/indirect_size;
@@ -488,7 +487,7 @@ inode_extend_indirect_block (struct inode_disk *i_d, size_t sec_cnt)
   } else if (free_map_allocate(1, &i_d->ptr[i_d->direct_index]) == NULL){
     return sec_cnt;
   }
-  for (; i_d->indirect_index < INDIRECT_BLOCK_PTRS; ){
+  for (; i_d->indirect_index < N_PTR_IN_DIR_BLK; ){
     if (free_map_allocate(1, &b.ptr[i_d->indirect_index])){
       buf_to_cache(b.ptr[i_d->indirect_index], ZBlock, 0,BLOCK_SECTOR_SIZE);
       i_d->indirect_index++;
@@ -499,7 +498,7 @@ inode_extend_indirect_block (struct inode_disk *i_d, size_t sec_cnt)
     }
   }
   buf_to_cache(i_d->ptr[i_d->direct_index], &b, 0, BLOCK_SECTOR_SIZE);
-  if (i_d->indirect_index == INDIRECT_BLOCK_PTRS){
+  if (i_d->indirect_index == N_PTR_IN_DIR_BLK){
     i_d->direct_index++;
     i_d->indirect_index = 0;
   }
@@ -519,7 +518,7 @@ inode_extend_nested_block (struct inode_disk *i_d, size_t sec_cnt,
     return sec_cnt;
   }
 
-  for (; i_d->doubly_indirect_index < INDIRECT_BLOCK_PTRS; ){
+  for (; i_d->doubly_indirect_index < N_PTR_IN_DIR_BLK; ){
     if (free_map_allocate(1, &nb.ptr[i_d->doubly_indirect_index])){
       buf_to_cache(nb.ptr[i_d->doubly_indirect_index],ZBlock, 0, BLOCK_SECTOR_SIZE);
       i_d->doubly_indirect_index++;
@@ -531,7 +530,7 @@ inode_extend_nested_block (struct inode_disk *i_d, size_t sec_cnt,
   }
 
   buf_to_cache(b->ptr[i_d->indirect_index], &nb, 0,BLOCK_SECTOR_SIZE);
-  if (i_d->doubly_indirect_index == INDIRECT_BLOCK_PTRS){
+  if (i_d->doubly_indirect_index == N_PTR_IN_DIR_BLK){
     i_d->indirect_index++;
     i_d->doubly_indirect_index = 0;
   }
@@ -547,7 +546,7 @@ inode_extend_doubly_indirect_block (struct inode_disk *i_d, size_t sec_cnt)
   } else {
     free_map_allocate(1, &i_d->ptr[i_d->direct_index]);
   }
-  for (;i_d->indirect_index < INDIRECT_BLOCK_PTRS;){
+  for (;i_d->indirect_index < N_PTR_IN_DIR_BLK;){
     sec_cnt = inode_extend_nested_block(i_d, sec_cnt, &b);
     if (sec_cnt == 0) break;
   }
@@ -567,7 +566,7 @@ inode_alloc(struct inode_disk *i_d, off_t length)
   if(size == 0)
     return true;
 
-  for (; i_d->direct_index < INDIRECT_INDEX;){
+  for (; i_d->direct_index < N_DIR_BLK;){
     if (!free_map_allocate(1, &i_d->ptr[i_d->direct_index])) 
       return false;
     buf_to_cache(i_d->ptr[i_d->direct_index], ZBlock, 0, BLOCK_SECTOR_SIZE);
@@ -577,12 +576,12 @@ inode_alloc(struct inode_disk *i_d, off_t length)
   }
 
 
-  for(;i_d->direct_index < DOUBLY_INDIRECT_INDEX;){
+  for(;i_d->direct_index < IN_DIR_END;){
     size = inode_extend_indirect_block(i_d, size);
     if (size == 0) return true;
   }
 
-  if (i_d->direct_index == DOUBLY_INDIRECT_INDEX) {
+  if (i_d->direct_index == IN_DIR_END) {
     size = inode_extend_doubly_indirect_block(i_d, size);
   } 
 
@@ -614,17 +613,17 @@ inode_dealloc (struct inode_disk *i_d)
   size_t i_sec_cnt = bytes_to_indirect_sectors(i_d->length);
   size_t d_sec_cnt = bytes_to_doubly_indirect_sector(i_d->length);
 
-  for (; sec_cnt > 0 && idx < INDIRECT_INDEX; idx++){
+  for (; sec_cnt > 0 && idx < N_DIR_BLK; idx++){
     free_map_release(i_d->ptr[idx], 1);
     sec_cnt--;
   }
 
-  for (;i_sec_cnt >0 && idx < DOUBLY_INDIRECT_INDEX; idx++){
+  for (;i_sec_cnt >0 && idx < IN_DIR_END; idx++){
     size_t in_size = 0;
-    if (sec_cnt < INDIRECT_BLOCK_PTRS){
+    if (sec_cnt < N_PTR_IN_DIR_BLK){
       in_size = sec_cnt;
     } else {
-      in_size = INDIRECT_BLOCK_PTRS;
+      in_size = N_PTR_IN_DIR_BLK;
     }
     inode_dealloc_block(&i_d->ptr[idx], in_size);
     sec_cnt -= in_size;
@@ -637,10 +636,10 @@ inode_dealloc (struct inode_disk *i_d)
     int i =0;
     for (; i<i_sec_cnt; i++){
       size_t in_size = 0;
-      if (sec_cnt < INDIRECT_BLOCK_PTRS){
+      if (sec_cnt < N_PTR_IN_DIR_BLK){
         in_size = sec_cnt;
       } else {
-        in_size = INDIRECT_BLOCK_PTRS;
+        in_size = N_PTR_IN_DIR_BLK;
       }
       inode_dealloc_block(&b.ptr[i], in_size);
       sec_cnt -= in_size;
