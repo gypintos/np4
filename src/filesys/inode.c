@@ -371,110 +371,43 @@ inode_read_at (struct inode *inode, void *buffer, off_t size, off_t offset)
 
 }
 
-/* Writes SIZE bytes from BUFFER into INODE, starting at OFFSET.
-   Returns the number of bytes actually written, which may be
-   less than SIZE if end of file is reached or an error occurs.
-   (Normally a write at end of file would extend the inode, but
-   growth is not yet implemented.) */
-// off_t
-// inode_write_at (struct inode *inode, const void *buffer_, off_t size,
-//                 off_t offset) 
-// {
-//   const uint8_t *buffer = buffer_;
-//   off_t bytes_written = 0;
-//   uint8_t *bounce = NULL;
-
-//   if (inode->deny_write_cnt)
-//     return 0;
-
-//   while (size > 0) 
-//     {
-//       /* Sector to write, starting byte offset within sector. */
-//       block_sector_t sector_idx = byte_to_sector (inode, offset);
-//       int sector_ofs = offset % BLOCK_SECTOR_SIZE;
-
-//       /* Bytes left in inode, bytes left in sector, lesser of the two. */
-//       off_t inode_left = inode_length (inode) - offset;
-//       int sector_left = BLOCK_SECTOR_SIZE - sector_ofs;
-//       int min_left = inode_left < sector_left ? inode_left : sector_left;
-
-//       /* Number of bytes to actually write into this sector. */
-//       int chunk_size = size < min_left ? size : min_left;
-//       if (chunk_size <= 0)
-//         break;
-
-//       if (sector_ofs == 0 && chunk_size == BLOCK_SECTOR_SIZE)
-//         {
-//           /* Write full sector directly to disk. */
-//           block_write (fs_device, sector_idx, buffer + bytes_written);
-//         }
-//       else 
-//         {
-//           /* We need a bounce buffer. */
-//           if (bounce == NULL) 
-//             {
-//               bounce = malloc (BLOCK_SECTOR_SIZE);
-//               if (bounce == NULL)
-//                 break;
-//             }
-
-//           /* If the sector contains data before or after the chunk
-//              we're writing, then we need to read in the sector
-//              first.  Otherwise we start with a sector of all zeros. */
-//           if (sector_ofs > 0 || chunk_size < sector_left) 
-//             block_read (fs_device, sector_idx, bounce);
-//           else
-//             memset (bounce, 0, BLOCK_SECTOR_SIZE);
-//           memcpy (bounce + sector_ofs, buffer + bytes_written, chunk_size);
-//           block_write (fs_device, sector_idx, bounce);
-//         }
-
-//       /* Advance. */
-//       size -= chunk_size;
-//       offset += chunk_size;
-//       bytes_written += chunk_size;
-//     }
-//   free (bounce);
-
-//   return bytes_written;
-// }
-/** NEW ADDED HERE **/
 off_t
 inode_write_at (struct inode *inode, const void *buffer, off_t size,
                 off_t offset, bool lock_acquired)
 {
-  off_t bytes_written = 0;
-  block_sector_t sector_idx;
+  block_sector_t sec_id;
   struct inode_disk *i_d;
-  bool growed = false;
-  int growed_size = 0;
+  int inc_size = 0;
+  off_t write_cnt = 0;
+  bool isInc = false;
 
   if (inode->deny_write_cnt)
     return 0;
-
   if(offset + size > inode_length(inode)) {
     /* File growth */
-    if (!lock_acquired)
+    if (lock_acquired == false){
       inode_acquire_lock(inode);
-      i_d = (struct inode_disk *) get_meta_inode(inode->sector);
-      growed = inode_alloc(i_d, offset + size);
-      growed_size = offset + size;
-      if (!growed) {
-    if (!lock_acquired)
-      inode_release_lock(inode);
-        free_meta_inode(inode->sector, true);
-        return bytes_written;
+    }
+    i_d = (struct inode_disk *) get_meta_inode(inode->sector);
+    isInc = inode_alloc(i_d, offset + size);
+    inc_size = offset + size;
+    if (isInc == false) {
+      if (lock_acquired = false){
+        inode_release_lock(inode);
       }
+      free_meta_inode(inode->sector, true);
+      return write_cnt;
+    }
   }
 
   while (size > 0)
     {
       /* Sector to write, starting byte offset within sector. */
-      sector_idx = byte_to_sector (inode, offset, growed_size);
+      sec_id = byte_to_sector (inode, offset, inc_size);
       int sector_ofs = offset % BLOCK_SECTOR_SIZE;
 
       /* Bytes left in inode, bytes left in sector, lesser of the two. */
-      off_t inode_left = growed ? growed_size : inode_length (inode) - offset;
+      off_t inode_left = isInc ? inc_size : inode_length (inode) - offset;
       int sector_left = BLOCK_SECTOR_SIZE - sector_ofs;
       int min_left = inode_left < sector_left ? inode_left : sector_left;
 
@@ -482,41 +415,33 @@ inode_write_at (struct inode *inode, const void *buffer, off_t size,
       int chunk_size = size < min_left ? size : min_left;
       if (chunk_size <= 0)
         break;
-
-      buf_to_cache (sector_idx, buffer + bytes_written, sector_ofs,
-                      chunk_size);
-
+      buf_to_cache (sec_id, buffer + write_cnt, sector_ofs,chunk_size);
       /* Advance. */
       size -= chunk_size;
       offset += chunk_size;
-      bytes_written += chunk_size;
+      write_cnt += chunk_size;
     }
 
-  if (growed) {
-  /* Update length of inode_disk after writing with growing */
-  if (offset + size > i_d->length) {
-    i_d->length = offset + size;
-    free_meta_inode(inode->sector, true);  
-  }
-    if (!lock_acquired)
+  if (isInc) {
+    if (i_d->length < offset+size ) {
+      i_d->length = offset + size;
+      free_meta_inode(inode->sector, true);  
+    }
+    if (!lock_acquired){
       inode_release_lock(inode);
-  }
-
-  /* Add new task for read-ahead */
-  if (!growed) {
-    block_sector_t rae_sector_idx = byte_to_sector (inode, offset,
-                                                    BLOCK_SECTOR_SIZE);
-    if (rae_sector_idx < block_size(fs_device)) {
+    }
+  } else {
+    block_sector_t pre_sec_id = byte_to_sector(inode, offset,BLOCK_SECTOR_SIZE);
+    if (pre_sec_id < block_size(fs_device)) {
       lock_acquire(pre_read_lock_ptr);
-      struct pre_read_elem *rae = malloc (sizeof(struct pre_read_elem));
-      rae->sec_id = rae_sector_idx;
-      list_push_back(&pre_read_que, &rae->elem);
+      struct pre_read_elem *pre = malloc(sizeof(struct pre_read_elem));
+      pre->sec_id = pre_sec_id;
+      list_push_back(&pre_read_que, &pre->elem);
       cond_signal(pre_read_cond_ptr, pre_read_lock_ptr);
       lock_release(pre_read_lock_ptr);
     }
   }
-
-  return bytes_written;
+  return write_cnt;
 }
 
 /* Disables writes to INODE.
