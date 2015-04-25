@@ -9,7 +9,6 @@ int SEC_NUM = PGSIZE / BLOCK_SECTOR_SIZE;
 void swap_init(void)
 {
   sw = block_get_role(BLOCK_SWAP);
-  /** NEW ADDED HERE **/
   if(sw == NULL){
     return;
   }

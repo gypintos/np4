@@ -12,7 +12,6 @@ struct hash ht_exec_to_threads;
 struct lock ht_exec_to_threads_lock;		 
 
 struct exe_to_threads {
-  // char exe_key[16];
   block_sector_t inumber;       /* Executable file inumber */
   struct hash_elem hash_elem;
   struct list threads;
@@ -56,7 +55,6 @@ void insert_mmap_page (void * vaddr, off_t ofs, struct file *file,
 bool load_page_to_frame(struct page *p, bool pin);
 void free_mmap_page_to_file (struct page *p);
 void write_mmap_page_to_file (struct page *p);
-// struct exe_to_threads* find_exe_to_threads_entry (char *exe_key);
 struct exe_to_threads* find_exe_to_threads_entry (block_sector_t inumber);
 void insert_exe_to_threads_entry (struct thread *t, struct file *file);
 void delete_exe_to_threads_entry (struct thread *t);

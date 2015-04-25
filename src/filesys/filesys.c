@@ -236,18 +236,18 @@ bool filesys_cd (const char* dir)
     bool isdir = false;
 
     if (strcmp(name_, "") == 0) {
-      if (thread_current()->cwd) 
-        dir_close(thread_current()->cwd);
-      thread_current()->cwd = dir_;
+      if (thread_current()->cur_dir) 
+        dir_close(thread_current()->cur_dir);
+      thread_current()->cur_dir = dir_;
       result = true;
     } else if (dir_lookup(dir_, name_, &inode, &isdir) ==NULL ||
                isdir == NULL) {
       dir_close(dir_);
       result = false;
     } else if (isdir != NULL){
-      if (thread_current()->cwd)
-        dir_close(thread_current()->cwd);
-      thread_current()->cwd = dir_open(inode);
+      if (thread_current()->cur_dir)
+        dir_close(thread_current()->cur_dir);
+      thread_current()->cur_dir = dir_open(inode);
       dir_close(dir_);
       result = true;
     }
@@ -265,8 +265,8 @@ static struct dir* filesys_get_dir (const char* path)
   memcpy(p, path, len);
   p[len]='\0';
 
-  bool openRoot = p[0]=='/' || thread_current ()->cwd == NULL;
-  dir = openRoot ? dir_open_root() : dir_reopen(thread_current()->cwd);
+  bool openRoot = p[0]=='/' || thread_current ()->cur_dir == NULL;
+  dir = openRoot ? dir_open_root() : dir_reopen(thread_current()->cur_dir);
 
   char *save_ptr;
   char *token = strtok_r(p, "/", &save_ptr);

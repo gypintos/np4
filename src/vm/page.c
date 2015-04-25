@@ -248,8 +248,6 @@ cmp_page_hash (const struct hash_elem *a_, const struct hash_elem *b_,
 
 unsigned hash_fun_exec_name(const struct hash_elem *elem, void *aux UNUSED){
   struct exe_to_threads *e = hash_entry(elem, struct exe_to_threads, hash_elem);
-  // return hash_string(e->exe_key); 
-  /** NEW ADDED HERE **/
   return (unsigned) e->inumber; 
 }
 
@@ -257,27 +255,10 @@ bool cmp_exec_name(const struct hash_elem *a, const struct hash_elem *b,
                   void *aux UNUSED){
   struct exe_to_threads *l = hash_entry(a, struct exe_to_threads, hash_elem);
   struct exe_to_threads *r = hash_entry(b, struct exe_to_threads, hash_elem);
-  // return hash_string(l->exe_key) < hash_string(r->exe_key);
-  /** NEW ADDED HERE **/
   return l->inumber <  r->inumber;
 
 }
 
-/* DELETE
-struct exe_to_threads* find_exe_to_threads_entry (char *exe_key)
-{
-  struct exe_to_threads* etp = malloc(sizeof(struct exe_to_threads));
-  strlcpy(etp->exe_key, exe_key, sizeof(etp->exe_key));
-  struct hash_elem* elem = hash_find(&ht_exec_to_threads, &etp->hash_elem);
-  if (elem != NULL){
-    return hash_entry(elem, struct exe_to_threads, hash_elem);
-  } else {
-    return NULL;
-  }
-
-} */
-
-/** NEW ADDED HERE **/
 struct exe_to_threads* find_exe_to_threads_entry (block_sector_t inumber)
 {
   struct exe_to_threads* etp = malloc(sizeof(struct exe_to_threads));
@@ -291,9 +272,7 @@ struct exe_to_threads* find_exe_to_threads_entry (block_sector_t inumber)
 
 }
 
-/** NEW ADDED HERE **/
-void
-insert_exe_to_threads_entry(struct thread *t, struct file *file)
+void insert_exe_to_threads_entry(struct thread *t, struct file *file)
 {
   block_sector_t inumber = inode_get_inumber (file_get_inode (file));
   struct exe_to_threads* etp = find_exe_to_threads_entry(inumber);
@@ -312,11 +291,9 @@ insert_exe_to_threads_entry(struct thread *t, struct file *file)
 void delete_exe_to_threads_entry (struct thread *t)
 {  
 
-  /** NEW ADDED HERE **/
   struct list_elem *e;
   ASSERT (t->exe != NULL);
   block_sector_t inumber = inode_get_inumber (file_get_inode (t->exe));
-  /** NEW ADDED HERE **/
   struct exe_to_threads* etp = find_exe_to_threads_entry(inumber);
 
   if (etp != NULL){
@@ -338,8 +315,6 @@ void delete_exe_to_threads_entry (struct thread *t)
 
 bool install_shared_page (struct page *p, bool lock) {
   lock_acquire(&ht_exec_to_threads_lock);
-
-  /** NEW ADDED HERE **/
   struct thread *t = thread_current();
   ASSERT (t->exe != NULL);
   block_sector_t inumber = inode_get_inumber (file_get_inode (t->exe));

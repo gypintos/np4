@@ -35,9 +35,7 @@ static struct list ready_list;
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
 
-/** NEW ADDED HERE **/
 static struct list sleep_list;
-
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -80,7 +78,7 @@ static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
-/*************/
+
 unsigned file_desc_hash_func (const struct hash_elem *e, void *aux);
 bool cmp_file_desc_less (const struct hash_elem *a, const struct hash_elem *b,
                          void *aux);
@@ -93,14 +91,8 @@ unsigned id_addr_hash_func (const struct hash_elem *e, void *aux);
 bool cmp_id_addr_less (const struct hash_elem *a, const struct hash_elem *b,
                       void *aux);
 
-/** NEW ADDED HERE **/
-static void threads_wake (void);
-static bool thread_alarm_sorter (const struct list_elem *a,
-const struct list_elem *b, void *aux UNUSED);
-
-
-
-/*************/
+static void wakeup_threads (void);
+static bool cmp_thread_ticks (const struct list_elem *a,const struct list_elem *b, void *aux UNUSED);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -131,7 +123,7 @@ thread_init (void)
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
   /** NEW ADDED HERE **/
-  initial_thread->cwd = NULL;
+  initial_thread->cur_dir = NULL;
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -241,10 +233,10 @@ thread_create (const char *name, int priority,
       hash_init(&t->ht_id_addr, id_addr_hash_func, cmp_id_addr_less, NULL);
       t->fd_seq = 1;
       t->id_addrs_seq = 1;
-      if (t->parent->cwd != NULL) {
-        t->cwd = dir_reopen(t->parent->cwd);
+      if (t->parent->cur_dir != NULL) {
+        t->cur_dir = dir_reopen(t->parent->cur_dir);
       } else {
-        t->cwd = NULL;
+        t->cur_dir = NULL;
       }
     }
 
@@ -572,7 +564,7 @@ static struct thread *
 next_thread_to_run (void)
 {
   /** NEW ADDED HERE **/
-  threads_wake();
+  wakeup_threads();
   if (list_empty (&ready_list))
     return idle_thread;
   else
@@ -713,64 +705,45 @@ struct child_info *find_child_info (struct thread *t, tid_t cid)
   return e != NULL ? hash_entry (e, struct child_info, elem) : NULL;
 }
 
-/** NEW ADDED HERE **/
-
-/* Goes through the sleep_list and wakes threads, by changing their
-   status and moving from sleep_list to ready_list if current tick
-   is more than or equal to alarm value of a sleeping thread. */
-
-static void threads_wake(void) {
+static void wakeup_threads(void) {
  int64_t cur_ticks = timer_ticks();
- struct list_elem *temp, *e;
- e = list_begin (&sleep_list);
+ struct list_elem *tmp, *e;
 
- while (e != list_end (&sleep_list)) {
-   struct thread *t = list_entry (e, struct thread, elem);
-
-   if (t->alarm <= cur_ticks) {
-     t->status = THREAD_READY;
-     temp = e;
-     e = list_next (e);
-     list_remove(temp);
-     list_push_back(&ready_list, &t->elem);
-     }
-   else {
-     break;
-   }
+ for (e = list_begin (&sleep_list); e != list_end (&sleep_list);){
+    struct thread *t = list_entry(e, struct thread, elem);
+    if (t->ticks > cur_ticks){
+      break;
+    } else {
+      t->status = THREAD_READY;
+      tmp = e ;
+      e = list_next (e)
+      list_remove(tmp);
+      list_push_back(&ready_list, &t->elem);
+    }
  }
- return;
+
 }
 
-/* Puts current thread to sleep by setting its status
-   to THREAD_SLEEPING and alarm to ALARM time.
-   Adds it to the list of sleeping threads (sorted by
-   alarm value, ascending), and schedules a new thread to run. */
-void
-thread_sleep (int64_t alarm)
+void thread_sleep (int64_t ticks)
 {
-  struct thread *cur = thread_current ();
-
+  struct thread *curr = thread_current ();
   enum intr_level old_level;
   old_level = intr_disable ();
-
-  if (cur != idle_thread) {
-   cur->status = THREAD_SLEEPING;
-   cur->alarm = alarm;
-   list_insert_ordered(&sleep_list, &cur->elem, thread_alarm_sorter, NULL);
-   schedule ();
+  if (curr != idle_thread) {
+    curr->ticks = ticks;
+    curr->status = THREAD_SLEEPING;
+    list_insert_ordered(&sleep_list, &curr->elem, cmp_thread_ticks, NULL);
+    schedule ();
   }
-
   intr_set_level (old_level);
 }
 
-/* Returns true if alarm value of the tread in list element a_ is less
-   than alarm value of the tread in list element b_. */
 static bool
-thread_alarm_sorter (const struct list_elem *a_, const struct list_elem *b_,
-void *aux UNUSED) {
- struct thread *ta = list_entry (a_, struct thread, elem);
- struct thread *tb = list_entry (b_, struct thread, elem);
- return ta->alarm < tb->alarm;
+cmp_thread_ticks (const struct list_elem *a_, const struct list_elem *b_,
+                  void *aux UNUSED) {
+ struct thread *a = list_entry (a_, struct thread, elem);
+ struct thread *b = list_entry (b_, struct thread, elem);
+ return a->ticks < b->ticks;
 }
 
 

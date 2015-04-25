@@ -297,9 +297,8 @@ void exit (int status) {
     printf ("%s: exit(%d)\n", curr->name, status);
     hash_destroy(&curr->ht_id_addr, remove_id_addr_entry);
 
-    /** NEW ADDED HERE **/
-    if (curr->cwd)
-        dir_close(curr->cwd);
+    if (curr->cur_dir)
+        dir_close(curr->cur_dir);
 
     hash_destroy(&curr->fds, remove_fds);
 
