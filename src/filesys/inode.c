@@ -350,14 +350,14 @@ inode_write_at (struct inode *inode, const void *buffer, off_t size,
   if(offset + size > inode_length(inode)) {
     /* File growth */
     if (lock_acquired == false){
-      inode_acquire_lock(inode);
+      inode_lock_acquire(inode);
     }
     i_d = (struct inode_disk *) get_meta_inode(inode->sector);
     isInc = inode_allocate(i_d, offset + size);
     inc_size = offset + size;
     if (isInc == false) {
       if (lock_acquired = false){
-        inode_release_lock(inode);
+        inode_lock_release(inode);
       }
       free_meta_inode(inode->sector, true);
       return write_cnt;
@@ -392,7 +392,7 @@ inode_write_at (struct inode *inode, const void *buffer, off_t size,
       free_meta_inode(inode->sector, true);  
     }
     if (!lock_acquired){
-      inode_release_lock(inode);
+      inode_lock_release(inode);
     }
   } else {
     block_sector_t pre_sec_id = byte_to_sector(inode, offset,BLOCK_SECTOR_SIZE);
@@ -613,16 +613,13 @@ inode_deallocate (struct inode_disk *i_d)
   }
 }
 
-/* Acquire lock in inode */
-void
-inode_acquire_lock (struct inode *inode)
+void inode_lock_acquire (struct inode *inode)
 {
   lock_acquire (&inode->in_lock);
 }
 
-/* Release lock in inode */
-void
-inode_release_lock (struct inode *inode)
+
+void inode_lock_release (struct inode *inode)
 {
   lock_release (&inode->in_lock);
 }

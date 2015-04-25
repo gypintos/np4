@@ -23,8 +23,8 @@ off_t inode_length (const struct inode *);
 int inode_get_open_cnt (const struct inode *);
 off_t inode_write_at (struct inode *, const void *, off_t size, off_t offset, bool lock_acquired);
 block_sector_t inode_start (const struct inode *inode);
-void inode_acquire_lock (struct inode *inode);
-void inode_release_lock (struct inode *inode);
+void inode_lock_acquire (struct inode *inode);
+void inode_lock_release (struct inode *inode);
 
 
 #endif /* filesys/inode.h */

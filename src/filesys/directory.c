@@ -124,9 +124,8 @@ dir_lookup (const struct dir *dir, const char *name,
 
   ASSERT (dir != NULL);
   ASSERT (name != NULL);
-  /** NEW ADDED HERE **/
-  // inode_acquire_lock(dir_get_inode((struct dir *)dir));
-  inode_acquire_lock(dir->inode);
+  
+  inode_lock_acquire(dir->inode);
 
   if (lookup (dir, name, &de, NULL)){
     *inode = inode_open (de.inode_sector);
@@ -134,9 +133,7 @@ dir_lookup (const struct dir *dir, const char *name,
   }
   else
     *inode = NULL;
-  /** NEW ADDED HERE **/
-  // inode_release_lock(dir_get_inode((struct dir *)dir));
-  inode_release_lock(dir->inode);
+  inode_lock_release(dir->inode);
 
   return *inode != NULL;
 }
@@ -147,7 +144,7 @@ dir_lookup (const struct dir *dir, const char *name,
    Returns true if successful, false on failure.
    Fails if NAME is invalid (i.e. too long) or a disk or memory
    error occurs. */
-/** NEW ADDED HERE **/
+
 bool
 dir_add (struct dir *dir, const char *name, block_sector_t inode_sector,bool isdir)
 {
@@ -162,8 +159,7 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector,bool isd
   if (*name == '\0' || strlen (name) > NAME_MAX)
     return false;
 
-  // inode_acquire_lock(dir_get_inode(dir));
-  inode_acquire_lock(dir->inode);
+  inode_lock_acquire(dir->inode);
 
   /* Check that NAME is not in use. */
   if (lookup (dir, name, NULL, NULL))
@@ -182,20 +178,20 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector,bool isd
       break;
 
   /* Write slot. */
-/** NEW ADDED HERE **/
+
   memset(&e, 0, sizeof e);
   e.in_use = true;
   strlcpy (e.name, name, sizeof e.name);
   e.inode_sector = inode_sector;
 
-/** NEW ADDED HERE **/
+
   e.isdir = isdir;
   result = inode_write_at (dir->inode, &e, sizeof e, ofs, true) == sizeof e;
   
  done:
-  /** NEW ADDED HERE **/
-  // inode_release_lock(dir_get_inode(dir));
- inode_release_lock(dir->inode);
+  
+  // inode_lock_release(dir_get_inode(dir));
+ inode_lock_release(dir->inode);
   return result;
 }
 
@@ -209,13 +205,13 @@ dir_remove (struct dir *dir, const char *name)
   struct inode *inode = NULL;
   bool result = false;
   off_t ofs;
-  /** NEW ADDED HERE **/
+  
   struct dir *dir_ = NULL;
 
   ASSERT (dir != NULL);
   ASSERT (name != NULL);
-  /** NEW ADDED HERE **/
-  inode_acquire_lock(dir->inode);
+  
+  inode_lock_acquire(dir->inode);
 
   /* Find directory entry. */
   if (!lookup (dir, name, &de, &ofs))
@@ -226,12 +222,9 @@ dir_remove (struct dir *dir, const char *name)
   if (inode == NULL)
     goto done;
 
-  /** NEW ADDED HERE **/
+  
   if (de.isdir) {
     dir_ = dir_open (inode);
- /* if any of these conditions is true, the dir can't be removed */
-    // if (!dir_ || dir_is_root(dir_) || !dir_is_empty(dir_)
-     // || dir_in_use(dir_))
     if (!dir_ || is_dir_removable(dir_))
       goto done;
   }
@@ -239,7 +232,7 @@ dir_remove (struct dir *dir, const char *name)
   /* Erase directory entry. */
   de.in_use = false;
   
-  /** NEW ADDED HERE **/
+  
   if (inode_write_at (dir->inode, &de, sizeof de, ofs, true) != sizeof de)
     goto done;
 
@@ -248,8 +241,8 @@ dir_remove (struct dir *dir, const char *name)
   result = true;
 
  done:
-  /** NEW ADDED HERE **/
-  inode_release_lock(dir->inode);
+  
+  inode_lock_release(dir->inode);
   inode_close (inode);
   return result;
 }
@@ -273,10 +266,6 @@ dir_readdir (struct dir *dir, char name[NAME_MAX + 1])
     }
   return false;
 }
-
-
-
-/** NEW ADDED HERE **/
 
 
 /* Returns true if the given directory DIR is the root directory
