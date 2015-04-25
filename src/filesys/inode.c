@@ -145,7 +145,7 @@ byte_to_sector (const struct inode *inode, off_t pos,  off_t inc_size)
   struct inode_disk *i_d = (struct inode_disk*)get_meta_inode(inode->sector);
 
   // off_t len = inc_size != 0 ? inc_size : i_d->length;
-  if (inc_size == 0) inc_size = i_d->length
+  if (inc_size == 0) inc_size = i_d->length;
 
   // if (pos <= inc_size)
   // {
