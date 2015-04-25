@@ -747,46 +747,21 @@ bool
 inode_alloc(struct inode_disk *i_d, off_t length)
 {
   static char ZBlock[BLOCK_SECTOR_SIZE];
-  // Initial i_d->length is 0.
+
   size_t size = bytes_to_sectors(length) - bytes_to_sectors(i_d->length);
 
   if(size == 0)
     return true;
 
-  /* Extend to direct blocks */
-  // while (i_d->direct_index < INDIRECT_INDEX)
-  // {
-  //   if (!free_map_allocate (1, &i_d->ptr[i_d->direct_index])) {
-  //     return false;
-  //   }
-  //   buf_to_cache(i_d->ptr[i_d->direct_index], zeros, 0, BLOCK_SECTOR_SIZE);
-  //   i_d->direct_index++;
-  //   size--;
-  //   if (size == 0)
-  //     return true;
-  // }
-
-  for (; i_d->direct_index < INDIRECT_INDEX; i_d->direct_index++){
+  for (; i_d->direct_index < INDIRECT_INDEX;){
     if (!free_map_allocate(1, &i_d->ptr[i_d->direct_index])) 
       return false;
     buf_to_cache(i_d->ptr[i_d->direct_index], ZBlock, 0, BLOCK_SECTOR_SIZE);
+    i_d->direct_index++
     size--;
     if (size == 0) return true;
   }
 
-  /* Extend to indirect blocks */
-  // while (i_d->direct_index < DOUBLY_INDIRECT_INDEX)
-  // {
-  //   size = inode_extend_indirect_block(i_d, size);
-  //   if (size == 0)
-  //     return true;
-  // }
-  
-
-  /* Extend to doubly indirect blocks */
-  // if (i_d->direct_index == DOUBLY_INDIRECT_INDEX) {
-  //   size = inode_extend_doubly_indirect_block(i_d, size);
-  // }
 
   for(;i_d->direct_index < DOUBLY_INDIRECT_INDEX;){
     size = inode_extend_indirect_block(i_d, size);
@@ -819,40 +794,75 @@ inode_dealloc (struct inode_disk *i_d)
   if (i_d->length == 0)
     return;
   unsigned int idx = 0;
-  size_t sectors = bytes_to_sectors(i_d->length);
-  size_t i_sectors = bytes_to_indirect_sectors(i_d->length);
-  size_t d_sector = bytes_to_doubly_indirect_sector(i_d->length);
+  size_t sec_cnt = bytes_to_sectors(i_d->length);
+  size_t i_sec_cnt = bytes_to_indirect_sectors(i_d->length);
+  size_t d_sec_cnt = bytes_to_doubly_indirect_sector(i_d->length);
 
   // Deallocate direct blocks
-  while (sectors && idx < INDIRECT_INDEX)
-  {
-    free_map_release (i_d->ptr[idx], 1);
-    sectors--;
-    idx++;
-  }
-  // Deallocate indirect blocks
-  while (i_sectors && idx < DOUBLY_INDIRECT_INDEX)
-  {
-    size_t size = sectors < INDIRECT_BLOCK_PTRS ? sectors
-                                                : INDIRECT_BLOCK_PTRS;
-    inode_dealloc_block(&i_d->ptr[idx], size);
-    sectors -= size;
-    i_sectors--;
-    idx++;
-  }
-  // Deallocate doubly indirect blocks
-  if (d_sector)
-  {
-    unsigned int i;
-    struct indirect_block block;
-    get_sec_from_cache(i_d->ptr[idx], &block, 0, BLOCK_SECTOR_SIZE);
-    for(i = 0; i < i_sectors; i++) {
-      size_t size = sectors < INDIRECT_BLOCK_PTRS ? sectors
-                                                  : INDIRECT_BLOCK_PTRS;
-      inode_dealloc_block(&block.ptr[i], size);
-      sectors -= size;
-    }
+  // while (sec_cnt && idx < INDIRECT_INDEX)
+  // {
+  //   free_map_release (i_d->ptr[idx], 1);
+  //   sec_cnt--;
+  //   idx++;
+  // }
+  for (; sec_cnt > 0 && idx < INDIRECT_INDEX; idx++){
     free_map_release(i_d->ptr[idx], 1);
+    sec_cnt--;
+  }
+
+  // Deallocate indirect blocks
+  // while (i_sec_cnt && idx < DOUBLY_INDIRECT_INDEX)
+  // {
+  //   size_t size = sec_cnt < INDIRECT_BLOCK_PTRS ? sec_cnt
+  //                                               : INDIRECT_BLOCK_PTRS;
+  //   inode_dealloc_block(&i_d->ptr[idx], size);
+  //   sec_cnt -= size;
+  //   i_sec_cnt--;
+  //   idx++;
+  // }
+
+  for (;i_sec_cnt >0 && idx < DOUBLY_INDIRECT_INDEX; idx++){
+    size_t in_size = 0;
+    if (sec_cnt < INDIRECT_BLOCK_PTRS){
+      in_size = sec_cnt;
+    } else {
+      in_size = INDIRECT_BLOCK_PTRS;
+    }
+    inode_dealloc_block(&i_d->ptr[idx], in_size);
+    sec_cnt -= in_size;
+    i_sec_cnt--;
+  }
+
+  // Deallocate doubly indirect blocks
+  // if (d_sec_cnt)
+  // {
+  //   unsigned int i;
+  //   struct indirect_block block;
+  //   get_sec_from_cache(i_d->ptr[idx], &block, 0, BLOCK_SECTOR_SIZE);
+  //   for(i = 0; i < i_sec_cnt; i++) {
+  //     size_t size = sec_cnt < INDIRECT_BLOCK_PTRS ? sec_cnt
+  //                                                 : INDIRECT_BLOCK_PTRS;
+  //     inode_dealloc_block(&block.ptr[i], size);
+  //     sec_cnt -= size;
+  //   }
+  //   free_map_release(i_d->ptr[idx], 1);
+  // }
+
+  if (d_sec_cnt > 0){
+    struct indirect_block b;
+    get_sec_from_cache(i_d->ptr[idx], &b, 0, BLOCK_SECTOR_SIZE);
+    int i =0;
+    for (; i<i_sec_cnt; i++){
+      size_t in_size = 0;
+      if (sec_cnt < INDIRECT_BLOCK_PTRS){
+        in_size = sec_cnt;
+      } else {
+        in_size = INDIRECT_BLOCK_PTRS;
+      }
+      inode_dealloc_block(&b.ptr[i], in_size);
+      sec_cnt -= in_size;
+    }
+    free_map_release(i_d->ptr[idx],1);
   }
 }
 
