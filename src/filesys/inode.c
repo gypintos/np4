@@ -188,7 +188,7 @@ byte_to_sector (const struct inode *inode, off_t pos,  off_t inc_size)
     uint32_t indirect_block[INDIRECT_BLOCK_PTRS];
     uint32_t index;
     off_t direct_range = BLOCK_SECTOR_SIZE * DIRECT_BLOCKS;
-    off_t indirect_range = BLOCK_SECTOR_SIZE*(DIRECT_BLOCKS + INDIRECT_BLOCKS * INDIRECT_BLOCK_PTRS)
+    off_t indirect_range = BLOCK_SECTOR_SIZE*(DIRECT_BLOCKS + INDIRECT_BLOCKS * INDIRECT_BLOCK_PTRS);
     off_t indirect_size = BLOCK_SECTOR_SIZE * INDIRECT_BLOCK_PTRS;
 
     if (pos < direct_range){
