@@ -131,7 +131,7 @@ bytes_to_doubly_indirect_sector (off_t size)
 
    /** NEW ADDED HERE **/
 static block_sector_t
-byte_to_sector (const struct inode *inode, off_t pos,  off_t growed_size) 
+byte_to_sector (const struct inode *inode, off_t pos,  off_t inc_size) 
 {
   // ASSERT (inode != NULL);
   // if (pos < inode->data.length)
@@ -141,46 +141,78 @@ byte_to_sector (const struct inode *inode, off_t pos,  off_t growed_size)
 
 
   ASSERT (inode != NULL);
-  block_sector_t result;
-  struct inode_disk *i_d = (struct inode_disk *)
-                            get_meta_inode(inode->sector);
-  off_t length = growed_size != 0 ? growed_size : i_d->length;
-  if (pos <= length)
-  {
-    uint32_t idx;
-    uint32_t indirect_block[INDIRECT_BLOCK_PTRS];
+  block_sector_t res;
+  struct inode_disk *i_d = (struct inode_disk*)get_meta_inode(inode->sector);
 
-    if (pos < BLOCK_SECTOR_SIZE * DIRECT_BLOCKS)
-    { // Data is only located in direct blocks
-      idx = pos / BLOCK_SECTOR_SIZE;
-      result = i_d->ptr[idx];
-    }
-    else if (pos < BLOCK_SECTOR_SIZE *
-                   (DIRECT_BLOCKS + INDIRECT_BLOCKS * INDIRECT_BLOCK_PTRS))
-    { // Data is located in indirect blocks
-      pos -= BLOCK_SECTOR_SIZE * DIRECT_BLOCKS;
-      idx = pos / (BLOCK_SECTOR_SIZE * INDIRECT_BLOCK_PTRS) + DIRECT_BLOCKS;
-      get_sec_from_cache(i_d->ptr[idx], &indirect_block, 0, BLOCK_SECTOR_SIZE);
-      pos %= BLOCK_SECTOR_SIZE * INDIRECT_BLOCK_PTRS;
-      result = indirect_block[pos / BLOCK_SECTOR_SIZE];
-    }
-    else
-    { // Data is located in doubly indirect blocks
-      get_sec_from_cache(i_d->ptr[DOUBLY_INDIRECT_INDEX], &indirect_block,
-                      0, BLOCK_SECTOR_SIZE);
-      pos -= BLOCK_SECTOR_SIZE *
-             (DIRECT_BLOCKS + INDIRECT_BLOCKS * INDIRECT_BLOCK_PTRS);
-      idx = pos / (BLOCK_SECTOR_SIZE  * INDIRECT_BLOCK_PTRS);
-      get_sec_from_cache(indirect_block[idx], &indirect_block, 0,
-                      BLOCK_SECTOR_SIZE);
-      pos %= BLOCK_SECTOR_SIZE * INDIRECT_BLOCK_PTRS;
-      result = indirect_block[pos / BLOCK_SECTOR_SIZE];
+  // off_t len = inc_size != 0 ? inc_size : i_d->length;
+  if (inc_size == 0) inc_size = i_d->length
+
+  // if (pos <= inc_size)
+  // {
+  //   uint32_t idx;
+  //   uint32_t indirect_block[INDIRECT_BLOCK_PTRS];
+
+  //   if (pos < BLOCK_SECTOR_SIZE * DIRECT_BLOCKS)
+  //   { // Data is only located in direct blocks
+  //     idx = pos / BLOCK_SECTOR_SIZE;
+  //     res = i_d->ptr[idx];
+  //   }
+  //   else if (pos < BLOCK_SECTOR_SIZE *
+  //                  (DIRECT_BLOCKS + INDIRECT_BLOCKS * INDIRECT_BLOCK_PTRS))
+  //   { // Data is located in indirect blocks
+  //     pos -= BLOCK_SECTOR_SIZE * DIRECT_BLOCKS;
+  //     idx = pos / (BLOCK_SECTOR_SIZE * INDIRECT_BLOCK_PTRS) + DIRECT_BLOCKS;
+  //     get_sec_from_cache(i_d->ptr[idx], &indirect_block, 0, BLOCK_SECTOR_SIZE);
+  //     pos %= BLOCK_SECTOR_SIZE * INDIRECT_BLOCK_PTRS;
+  //     res = indirect_block[pos / BLOCK_SECTOR_SIZE];
+  //   }
+  //   else
+  //   { // Data is located in doubly indirect blocks
+  //     get_sec_from_cache(i_d->ptr[DOUBLY_INDIRECT_INDEX], &indirect_block,
+  //                     0, BLOCK_SECTOR_SIZE);
+  //     pos -= BLOCK_SECTOR_SIZE *
+  //            (DIRECT_BLOCKS + INDIRECT_BLOCKS * INDIRECT_BLOCK_PTRS);
+  //     idx = pos / (BLOCK_SECTOR_SIZE  * INDIRECT_BLOCK_PTRS);
+  //     get_sec_from_cache(indirect_block[idx], &indirect_block, 0,
+  //                     BLOCK_SECTOR_SIZE);
+  //     pos %= BLOCK_SECTOR_SIZE * INDIRECT_BLOCK_PTRS;
+  //     res = indirect_block[pos / BLOCK_SECTOR_SIZE];
+  //   }
+  // }
+  // else
+  //   res = -1;
+
+  if (pos > inc_size){
+    res = -1;
+  } else {
+    uint32_t indirect_block[INDIRECT_BLOCK_PTRS];
+    uint32_t index;
+    off_t direct_range = BLOCK_SECTOR_SIZE * DIRECT_BLOCKS;
+    off_t indirect_range = BLOCK_SECTOR_SIZE*(DIRECT_BLOCKS + INDIRECT_BLOCKS * INDIRECT_BLOCK_PTRS)
+    off_t indirect_size = BLOCK_SECTOR_SIZE * INDIRECT_BLOCK_PTRS;
+
+    if (pos < direct_range){
+      index = pos/ BLOCK_SECTOR_SIZE;
+      res = i_d->ptr[index];
+    } else if (pos < indirect_range){
+      pos -= direct_range;
+      index = pos/indirect_size + DIRECT_BLOCKS;
+      get_sec_from_cache(i_d->ptr[index],&indirect_block, 0, BLOCK_SECTOR_SIZE);
+      pos %= indirect_size;
+      res = indirect_block[pos/BLOCK_SECTOR_SIZE];
+    } else {
+      get_sec_from_cache(i_d->ptr[DOUBLY_INDIRECT_INDEX], &indirect_block,0, 
+        BLOCK_SECTOR_SIZE);
+      pos -= indirect_range;
+      index = pos/indirect_size;
+      get_sec_from_cache(indirect_block[index], &indirect_block, 0,BLOCK_SECTOR_SIZE);
+      pos %= indirect_size;
+      res = indirect_block[pos/BLOCK_SECTOR_SIZE];
     }
   }
-  else
-    result = -1;
+
   free_meta_inode(inode->sector, false);
-  return result;
+  return res;
 
 }
 
