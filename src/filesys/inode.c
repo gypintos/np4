@@ -277,17 +277,30 @@ inode_create (block_sector_t sector, off_t length)
   ASSERT (sizeof *disk_inode == BLOCK_SECTOR_SIZE);
 
   disk_inode = calloc (1, sizeof *disk_inode);
-  if (disk_inode != NULL)
-    {
-      disk_inode->magic = INODE_MAGIC;
-      if(length == 0 || inode_alloc(disk_inode, length)) {
-        disk_inode->length = length;
-        buf_to_cache(sector, disk_inode, 0, BLOCK_SECTOR_SIZE);
-        success = true;
-      }
-      free (disk_inode);
+  // if (disk_inode != NULL)
+  //   {
+  //     disk_inode->magic = INODE_MAGIC;
+  //     if(length == 0 || inode_alloc(disk_inode, length)) {
+  //       disk_inode->length = length;
+  //       buf_to_cache(sector, disk_inode, 0, BLOCK_SECTOR_SIZE);
+  //       success = true;
+  //     }
+  //     free (disk_inode);
+  //   }
+  // return success;
+
+
+  if (disk_inode){
+    disk_inode->magic = INODE_MAGIC;
+    if (length == 0 || inode_alloc(disk_inode, length) == true){
+      disk_inode->length = length;
+      buf_to_cache(sector, disk_inode, 0, BLOCK_SECTOR_SIZE);
+      success = true;
     }
+    free(disk_inode);
+  } 
   return success;
+
 
 }
 
