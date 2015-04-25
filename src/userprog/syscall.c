@@ -31,8 +31,8 @@ void remove_child_info (struct hash_elem *e, void *aux UNUSED);
 
 
 /** NEW ADDED HERE **/
-static struct dir * thread_fd_to_dir (int fd);
-static bool thread_fd_is_dir (int fd);
+static struct dir * get_thread_dir_by_fd (int fd);
+static bool is_fd_dir (int fd);
 static bool chdir (const char *dir);
 static bool mkdir (const char *dir);
 static bool readdir (int fd, char *name);
@@ -429,29 +429,22 @@ void insert_fd(struct thread *t, struct file_desc *fd) {
  }
 
 /** NEW ADDED HERE **/
- static struct dir * thread_fd_to_dir (int fd) {
-    struct file_desc ftf;
-    struct file_desc *ftf_ptr ;
-    ftf.fid = fd;
-    struct hash_elem *e = hash_find(&thread_current()->fds, &ftf.elem);
-    if (e == NULL) {
-        return NULL;
-    }
-    ftf_ptr = hash_entry(e, struct file_desc, elem);
-    return ftf_ptr->dir_ptr;
+ static struct dir * get_thread_dir_by_fd (int fd) {
+    struct file_desc f_desc;
+    f_desc.fid = fd;
+    struct hash_elem *e = hash_find(&thread_current()->fds, &f_desc.elem);
+    if (!e) return NULL;
+    struct file_desc *f_desc_ptr = hash_entry(e, struct file_desc, elem);
+    return f_desc_ptr->dir_ptr;
  }
 
- /* Returns true if a directory is opened as fd */
- static bool thread_fd_is_dir (int fd) {
-    struct file_desc ftf;
-    struct file_desc *ftf_ptr ;
-    ftf.fid = fd;
-    struct hash_elem *e = hash_find(&thread_current()->fds, &ftf.elem);
-    if (e == NULL) {
-        return NULL;
-    }
-    ftf_ptr = hash_entry(e, struct file_desc, elem);
-    return ftf_ptr->isdir;
+ static bool is_fd_dir (int fd) {
+    struct file_desc f_desc;
+    f_desc.fid = fd;
+    struct hash_elem *e = hash_find(&thread_current()->fds, &f_desc.elem);
+    if (!e) return NULL;
+    struct file_desc *f_desc_ptr = hash_entry(e, struct file_desc, elem);
+    return f_desc_ptr->isdir;
  }
 
 int read (int fd, void *buffer, unsigned length) {
@@ -684,62 +677,41 @@ void munmap_helper (struct id_addr *id, struct thread *t) {
     hash_delete(&t->ht_id_addr, &id->elem);
 }
 
-
-/* Changes the current working directory of the process to dir, which
-+   may be relative or absolute. Returns true if successful, false on failure. */
 static bool chdir (const char *dir) {
    bool success = filesys_cd(dir);
    return success;
  }
 
-/* Creates the directory named dir, which may be relative or absolute.
-   Returns true if successful, false on failure. Fails if dir already
-   exists or if any directory name in dir, besides the last, does not
-   already exist. That is, mkdir("/a/b/c") succeeds only if /a/b
-   already exists and /a/b/c does not. */
 static bool mkdir (const char *dir) {
-
-   /* Initially a directory has two entries "." and ".." */
    bool success = filesys_create(dir, 2 * DIR_ENTRY, true);
-
    return success;
 }
 
-/* Reads a directory entry from file descriptor fd, which must
-   represent a directory. If successful, stores the null-terminated
-   file name in name, which must have room for READDIR_MAX_LEN  1
-   bytes, and returns true. If no entries are left in the directory,
-   returns false.
-   . and .. should not be returned by readdir. */
 static bool readdir (int fd, char *name) {
-   if (!thread_fd_is_dir(fd)) return false;
-
-   struct dir *dir = thread_fd_to_dir(fd);
-   if (dir == NULL) return false;
-
-   do{
-     if (!dir_readdir(dir, name)) return false;
-   }while((strcmp(name, ".") == 0) || (strcmp(name, "..") == 0));
-
-   return true;
+    if (!is_fd_dir(fd)) return false;
+    struct dir *dir = get_thread_dir_by_fd(fd);
+    if (!dir) return false;
+    if (!dir_readdir(dir, name)) 
+        return false;
+    while( strcmp(name, ".") == 0 || strcmp(name, ".." == 0 ){
+        if (!dir_readdir(dir, name)) 
+            return false;
+    }
+    return true;
 }
 
-/* Returns true if fd represents a directory, false if it represents
-   an ordinary file. */
 static bool isdir (int fd) {
-   return thread_fd_is_dir(fd);
+   return is_fd_dir(fd);
 }
 
-/* Returns the inode number of the inode associated with fd, which may
-   represent an ordinary file or a directory. */
 static int inumber (int fd) {
-   if (thread_fd_is_dir(fd)) {
-       struct dir *dir = thread_fd_to_dir(fd);
-       ASSERT (dir != NULL);
-       return inode_get_inumber(dir_get_inode(dir));
+   if (!is_fd_dir(fd)) {
+        struct file *file = get_file_by_id(fd);
+        ASSERT (file != NULL);
+        return inode_get_inumber(file_get_inode(file));
    } else {
-       struct file *file = get_file_by_id(fd);
-       ASSERT (file != NULL);
-       return inode_get_inumber(file_get_inode(file));
+        struct dir *dir = get_thread_dir_by_fd(fd);
+        ASSERT (dir != NULL);
+        return inode_get_inumber(dir_get_inode(dir));
    }
 }

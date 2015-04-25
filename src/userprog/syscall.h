@@ -3,7 +3,6 @@
 #include "threads/thread.h"
 
 #define MAP_FAILED ((mapid_t) -1)
-/** NEW ADDED HERE **/
 #define READDIR_MAX_LEN 14
 
 typedef int mapid_t;
