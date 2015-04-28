@@ -192,41 +192,41 @@ syscall_handler (struct intr_frame *f)
             release_args(syscall, 1, args);
             break;
         case SYS_CHDIR: {
-           void *args[1];
+           // void *args[1];
            get_args(syscall, 1, args);
-           char *buff_ptr = (char *)*(int *)args[0];
-           validate_addr(buff_ptr, f->esp, false);
-           f->eax = chdir(buff_ptr);
+           buf = (char *)*(int *)args[0];
+           validate_addr(buf, f->esp, false);
+           f->eax = chdir(buf);
            release_args(syscall, 1, args);
            break;
        }
        case SYS_MKDIR: {
-           void *args[1];
+           // void *args[1];
            get_args(syscall, 1, args);
-           char *buff_ptr = (char *)*(int *)args[0];
-           validate_addr(buff_ptr, f->esp, false);
-           f->eax = mkdir(buff_ptr);
+           buf = (char *)*(int *)args[0];
+           validate_addr(buf, f->esp, false);
+           f->eax = mkdir(buf);
            release_args(syscall, 1, args);
            break;
        }
        case SYS_READDIR: {
-           void *args[2];
+           // void *args[2];
            get_args(syscall, 2, args);
-           char *buff_ptr = (char *)*(int *)args[1];
-           validate_buf(buff_ptr, READDIR_MAX_LEN + 1, f->esp, true);
-           f->eax = readdir(*(int *)args[0], buff_ptr);
+           buf = (char *)*(int *)args[1];
+           validate_buf(buf, READDIR_MAX_LEN + 1, f->esp, true);
+           f->eax = readdir(*(int *)args[0], buf);
            release_args(syscall, 2, args);
            break;
        }
        case SYS_ISDIR: {
-           void *args[1];
+           // void *args[1];
            get_args(syscall, 1, args);
            f->eax = isdir(*(int *)args[0]);
            release_args(syscall, 1, args);
            break;
        }
        case SYS_INUMBER: {
-           void *args[1];
+           // void *args[1];
            get_args(syscall, 1, args);
            f->eax = inumber(*(int *)args[0]);
            release_args(syscall, 1, args);
