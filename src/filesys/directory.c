@@ -267,50 +267,6 @@ dir_readdir (struct dir *dir, char name[NAME_MAX + 1])
   return false;
 }
 
-
-// /* Returns true if the given directory DIR is the root directory
-//    otherwise false */
-// bool
-// dir_is_root (struct dir *dir)
-// {
-//   ASSERT (dir != NULL);
-//   return inode_get_inumber (dir_get_inode (dir)) == ROOT_DIR_SECTOR;
-// }
-
-// /* Returns true if the given directory DIR contains no entries other
-//    than "." and "..", otherwise false */
-// bool
-// dir_is_empty (struct dir *dir)
-// {
-//   struct dir_entry de;
-//   size_t ofs;
-
-//   ASSERT (dir != NULL);
-
-//   for (ofs = 0; inode_read_at (dir->inode, &de, sizeof de, ofs) == sizeof de;
-//        ofs += sizeof de)
-//   if (de.in_use
-//       && (strcmp (".", de.name) != 0)
-//     && (strcmp ("..", de.name) != 0))
-//     return false;
-
-//   return true;
-// }
-
-// /* Returns true if the given directory DIR is in use (i.e. opened by
-//    a process). otherwise false */
-// bool
-// dir_in_use (struct dir *dir)
-// {
-//   ASSERT (dir != NULL);
-//   struct inode* inode = dir_get_inode (dir);
-//   int open_cnt = inode_get_open_cnt (inode);
-//   /* To examine the DIR we have to open it first, therefore open count
-//      is at least 1 */
-//   ASSERT (open_cnt >= 1);
-//   return (open_cnt > 1);
-// }
-
 bool is_dir_removable(struct dir* dir){
   bool isEmpty = true;
   bool isRoot = inode_get_inumber(dir->inode) == ROOT_DIR_SECTOR;

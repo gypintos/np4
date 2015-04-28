@@ -29,13 +29,88 @@ Feifei Guo <feitwo@ccs.neu.edu>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+1. In threads/thread.h:
+struct thread
+{
+	...
+	int64_t ticks;      /* if thread is sleeping, the remainning to wake up*/
+    ...
+	struct dir *cur_dir;                  /* current working directory */
+	...
+}
+
+enum thread_status
+  {
+    ...
+    THREAD_SLEEPING     /* Sleeping. */
+  };
+
+
+2. In vm/page.h
+struct exe_to_threads {
+  block_sector_t inumber;       /* Executable file inumber */
+  ...
+};
+
+3. filesys/directory.c
+/* A single directory entry. */
+struct dir_entry 
+  {
+    ...
+    bool isdir;                         /* Directory or not */
+  };
+
+4. In filesys/inode.c:
+struct inode_disk
+  {
+    ...                              
+    uint32_t dir_ptr;           /* the pointer of direct block */         
+    uint32_t indir_ptr;          /* the pointer of indirect block */
+    uint32_t d_indir_ptr;        /* the pointer of doubly indirect block/*/
+    block_sector_t ptr[N_PTR_INODE]; /* pointers for blocks */
+    uint32_t unused[109];       /* not used */
+  };
+
+struct indir_blk
+{
+    block_sector_t ptr[N_PTR_IN_DIR_BLK];   /* pointers for blocks */
+};
+This is for the indirect and doubly indirect block 
+
+struct inode 
+  {
+   ...
+   struct lock in_lock;    /* inode lock */               
+  };
+
+
+#define N_DIR_BLK 12                      /* number of direct blocks */
+#define N_IN_DIR_BLK 1                    /* number of indirect blocks */ 
+#define N_DOU_IN_DIR_BLK 1                /* number of doubly indirect blocks */
+#define IN_DIR_END N_DIR_BLK + N_IN_DIR_BLK   /* the end of indirect blocks */
+#define N_PTR_INODE IN_DIR_END + N_DOU_IN_DIR_BLK  /* number of inode pointers */
+#define N_PTR_IN_DIR_BLK 128             /* number of pointers in indirect block */
+
 >> A2: What is the maximum size of a file supported by your inode
 >> structure?  Show your work.
+
+the maximum size of a file = 512 * 12 + 128 * 512 + 128 * 128 * 512 
+						   = 8460288 Bytes
+Each block is 128 bytes. an inode hash 12 direct blocks, an indirect 
+block has 128 pointers to other block, an doubly indirect blocks has 
+128 pointers to indirect blocks. 
+
 
 ---- SYNCHRONIZATION ----
 
 >> A3: Explain how your code avoids a race if two processes attempt to
 >> extend a file at the same time.
+
+In our implementation, we add lock which is "in_lock" in the inode structure.
+So the lock will deal with the race. If one process tries to extend a file,
+it need to acquire the lock. after the operation, this process will release
+the lock. 
+
 
 >> A4: Suppose processes A and B both have file F open, both
 >> positioned at end-of-file.  If A reads and B writes F at the same
@@ -44,12 +119,30 @@ Feifei Guo <feitwo@ccs.neu.edu>
 >> nonzero data, A is not allowed to see all zeros.  Explain how your
 >> code avoids this race.
 
+In this situation, we deal with this race as the problem description. 
+If A reads and B writes F at the same time, A may not read the updates
+until B is done. In our implemention, we make changes in inode_write_at().
+for the writing process, B here, it will change the file's length.
+So we need to wait the operation to finish, then update the length of an
+inode. 
+
 >> A5: Explain how your synchronization design provides "fairness".
 >> File access is "fair" if readers cannot indefinitely block writers
 >> or vice versa.  That is, many processes reading from a file cannot
 >> prevent forever another process from writing the file, and many
 >> processes writing to a file cannot prevent another process forever
 >> from reading the file.
+
+In our implementation, 
+1. For the race between readers and writers, the writers will not be 
+blocked by readers. 
+2. For the writers and readers, as A4 describes, the readers will not 
+be forever blocked by writers. So after the writer is done, the reader
+will be able to read.
+3. For the writer with other writers, the writers will not be forever
+blocked by this writer. Writing the file and end of writing will be locked
+by inode lock. So after the lock is released, the other writer can write. 
+
 
 ---- RATIONALE ----
 
@@ -58,6 +151,11 @@ Feifei Guo <feitwo@ccs.neu.edu>
 >> indirect blocks?  If not, why did you choose an alternative inode
 >> structure, and what advantages and disadvantages does your
 >> structure have, compared to a multilevel index?
+
+In our implementation, the inode structure is a multilevel index. the 
+inode is the combination of direct, indirect and doubly indirect blocks.
+The system requires to support 8 MB file. So we use one doubly indirect
+block and one indirect block to support this size. 
 
 			    SUBDIRECTORIES
 			    ==============
@@ -127,12 +225,36 @@ directory.
 >> file system operations?  If not, how do you prevent it?
 
 We do not allow this happen. To prevent it, we check open count member of
-the inode of that directory, if this member is greate than 1, it can't be deleted
+the inode of that directory, if this member is greate than 1, it can't be 
+deleted
 
 ---- RATIONALE ----
 
 >> B6: Explain why you chose to represent the current directory of a
 >> process the way you did.
+
+In threads/thread.h:
+struct thread
+{
+	...
+	struct dir *cur_dir;                  /* current working directory */
+	...
+}
+
+Adding a current directory field for thread struct will be helpful.
+It will help use easily manipute some operations. 
+These are several directory operations for current directory:
+1. we can get the current directory when traversing a relative path. 
+	and set the thread's cur_dir. This operation will need dir_reopen().
+2. in system call, CHDIR, it will change the directory. First, close 
+	the current directory, then open the new directory and set the 
+	thread's cur_dir to new one. This call will need dir_close() and 
+	dir_open().
+3. in system call, EXEC, it will set the parent's current directory 
+	to the child's current directory. This call will need dir_reopen().
+
+
+
 
 			     BUFFER CACHE
 			     ============

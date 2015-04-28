@@ -23,11 +23,6 @@ struct dir *dir_open_root (void);
 struct dir *dir_reopen (struct dir *);
 void dir_close (struct dir *);
 struct inode *dir_get_inode (struct dir *);
-
-/** NEW ADDED HERE **/
-// bool dir_is_root (struct dir *dir);
-// bool dir_is_empty (struct dir *dir);
-// bool dir_in_use (struct dir *dir);
 bool is_dir_removable(struct dir* dir);
 /* Reading and writing. */
 bool dir_lookup (const struct dir *, const char *name, struct inode **, bool *isdir);
