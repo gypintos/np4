@@ -114,8 +114,7 @@ lookup (const struct dir *dir, const char *name,
 
 /* Searches DIR for a file with the given NAME
    and returns true if one exists, false otherwise.
-   On success, sets *INODE to an inode for the file, otherwise to
-   a null pointer.  The caller must close *INODE. */
+ */
 bool
 dir_lookup (const struct dir *dir, const char *name,
             struct inode **inode, bool *isdir) 
@@ -141,10 +140,7 @@ dir_lookup (const struct dir *dir, const char *name,
 /* Adds a file named NAME to DIR, which must not already contain a
    file by that name.  The file's inode is in sector
    INODE_SECTOR.
-   Returns true if successful, false on failure.
-   Fails if NAME is invalid (i.e. too long) or a disk or memory
-   error occurs. */
-
+*/
 bool
 dir_add (struct dir *dir, const char *name, block_sector_t inode_sector,bool isdir)
 {

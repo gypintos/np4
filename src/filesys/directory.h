@@ -11,7 +11,6 @@
    retained, but much longer full path names must be allowed. */
 #define NAME_MAX 14
 
-/** NEW ADDED HERE **/
 #define SIZE_DIR 24
 
 struct inode;

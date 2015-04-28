@@ -14,8 +14,6 @@
 struct block *fs_device;
 
 static void do_format (void);
-
-/** NEW ADDED HERE **/
 static struct dir* filesys_get_dir (const char* path);
 static char* filesys_get_name (const char* path);
 
@@ -47,14 +45,10 @@ filesys_done (void)
   all_cache_to_disk (true);
 }
 
-/* Creates a file named NAME with the given INITIAL_SIZE.
-   Returns true if successful, false otherwise.
-   Fails if a file named NAME already exists,
-   or if internal memory allocation fails. */
+/* Creates a file named NAME with the given INITIAL_SIZE.*/
 bool
 filesys_create (const char *name, off_t initial_size, bool isdir) 
 {
-  /** NEW ADDED HERE **/
   if (strlen(name) == 0) return false;
   block_sector_t inode_sector = 0;
 
@@ -102,8 +96,7 @@ filesys_create (const char *name, off_t initial_size, bool isdir)
 /* Opens the file with the given NAME.
    Returns the new file if successful or a null pointer
    otherwise.
-   Fails if no file named NAME exists,
-   or if an internal memory allocation fails. */
+*/
 void
 filesys_open (const char *name, struct file **file, struct dir **dir, bool *isdir)
 {
@@ -113,33 +106,25 @@ filesys_open (const char *name, struct file **file, struct dir **dir, bool *isdi
     if (isdir) *isdir = false;
     return;
   }
-
   struct dir *dir_ = filesys_get_dir (name);
   char *name_ = filesys_get_name (name);
   struct inode *inode = NULL;
   bool isdir_ = false;
 
-  /* name is "/", open root */
   if (strcmp (name_, "") == 0) {
     if (file ) *file = NULL;
     if (dir) *dir = dir_;
     if (isdir) *isdir = true;
     free (name_);
-    // return;
-  }
-
-  // if (dir_)
-  else if (dir_ && !dir_lookup (dir_, name_, &inode, &isdir_)) {
+  }  else if (dir_ && !dir_lookup (dir_, name_, &inode, &isdir_)) {
     if (file) *file = NULL;
     if (dir) *dir = NULL;
     if (isdir) *isdir = false;
     dir_close (dir_);
     free (name_);
-    // return;
   } else {
     dir_close (dir_);
     free (name_);
-
     if (isdir_) {
       if (file) *file = NULL;
       ASSERT (dir);
@@ -154,35 +139,10 @@ filesys_open (const char *name, struct file **file, struct dir **dir, bool *isdi
   }
 }
 
-/* Deletes the file named NAME.
-   Returns true if successful, false on failure.
-   Fails if no file named NAME exists,
-   or if an internal memory allocation fails. */
-bool
+/* Deletes the file named NAME. */
+bool 
 filesys_remove (const char *name) 
 {
-  // struct dir *dir = dir_open_root ();
-  // bool success = dir != NULL && dir_remove (dir, name);
-  // dir_close (dir);
-
-  /** NEW ADDED HERE **/
-  // if (strlen(name) == 0) return false;
-  
-  // struct dir* dir_ = filesys_get_dir(name);
-  // char* name_ = filesys_get_name(name);
-  // bool success = false;
-
-  //  can't remove root 
-  // if (strcmp (name_, "") == 0) goto done;
-
-  // success = dir_ != NULL && dir_remove (dir_, name_);
-
-  // done:
-  // dir_close (dir_);
-  // free(name_); 
-
-  // return success;
-
   bool result = false;
   if (strlen(name) == 0){
     return false;
@@ -198,30 +158,6 @@ filesys_remove (const char *name)
   }
 
 }
-
-/* Formats the file system. */
-static void
-do_format (void)
-{
-  printf ("Formatting file system...");
-  free_map_create ();
-  if (!dir_create (ROOT_DIR_SECTOR, 2))
-    PANIC ("root directory creation failed");
-
-  /** NEW ADDED HERE **/
-  // if (!dir_add (dir_open_root (), ".", ROOT_DIR_SECTOR, true)
-  //     || !dir_add (dir_open_root (), "..", ROOT_DIR_SECTOR, true))
-  //   PANIC ("add entry . and .. for root directory failed");
-
-  if (dir_add(dir_open_root (), ".", ROOT_DIR_SECTOR, true) ==  NULL ||
-      dir_add(dir_open_root (), "..", ROOT_DIR_SECTOR, true) == NULL ){
-    PANIC ("root directory added . or .. failed");
-  }
-  
-  free_map_close ();
-  printf ("done.\n");
-}
-
 
 bool filesys_cd (const char* dir)
 {
@@ -255,7 +191,23 @@ bool filesys_cd (const char* dir)
   free(name_);
   return result;
 }
+
+/* Formats the file system. */
+static void do_format (void)
+{
+  printf ("Formatting file system...");
+  free_map_create ();
+  if (!dir_create (ROOT_DIR_SECTOR, 2))
+    PANIC ("root directory creation failed");
 
+  if (dir_add(dir_open_root (), ".", ROOT_DIR_SECTOR, true) ==  NULL ||
+      dir_add(dir_open_root (), "..", ROOT_DIR_SECTOR, true) == NULL ){
+    PANIC ("root directory added . or .. failed");
+  }
+  
+  free_map_close ();
+  printf ("done.\n");
+}
 
 static struct dir* filesys_get_dir (const char* path)
 {
@@ -289,45 +241,8 @@ static struct dir* filesys_get_dir (const char* path)
 
 }
 
-
 static char* filesys_get_name (const char* path)
 {
-  // if (strcmp(path, "") == 0) goto done_empty;
-
-  // char *s = (char *)malloc(sizeof(char) * (strlen(path) + 1));
-  // memcpy(s, path, strlen(path));
-  // s[strlen(path)] = '\0';
-
-  // char *save_ptr;
-  // char *token;
-  // char *next_token;
-  // token = strtok_r(s, "/", &save_ptr);
-
-  // if (token)
-  //   next_token = strtok_r(NULL, "/", &save_ptr);
-  // else
-  //   goto done_empty;
-
-  // if (next_token == NULL) goto done;
-
-  // for (; next_token != NULL; token = next_token,
-  //      next_token = strtok_r(NULL, "/", &save_ptr))
-  //   ;
-
-  // done:
-  // ;
-  // char *name = (char *)malloc(sizeof(char) * (strlen(token) + 1));
-  // memcpy(name, token, strlen(token));
-  // name[strlen(token)] = '\0';
-  // return name;
-
-  // done_empty:
-  // ;
-  // char *empty = (char *)malloc(sizeof(char));
-  // empty[0] = '\0';
-  // return empty;
-
-
   int len = strlen(path);
   char *p = (char *)malloc(sizeof(char) * (len + 1));
   memcpy(p, path, len);
@@ -352,6 +267,12 @@ static char* filesys_get_name (const char* path)
     lst[strlen(token)] = '\0';
     return lst;
   }
-  
-
 }
+
+
+
+
+
+
+
+

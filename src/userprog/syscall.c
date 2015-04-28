@@ -29,21 +29,18 @@ void remove_fds (struct hash_elem *e, void *aux);
 void remove_id_addr_entry (struct hash_elem *e, void *aux UNUSED);
 void remove_child_info (struct hash_elem *e, void *aux UNUSED);
 
-
-/** NEW ADDED HERE **/
 static struct dir * get_thread_dir_by_fd (int fd);
 static bool is_fd_dir (int fd);
 static bool chdir (const char *dir);
-static bool mkdir (const char *dir);
 static bool readdir (int fd, char *name);
-static bool isdir (int fd);
+static bool mkdir (const char *dir);
 static int inumber (int fd);
+static bool isdir (int fd);
 
 void
 syscall_init (void)
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
-  // lock_init(&filesys_lock);
   sema_init(&sys_sema, 1);
 }
 
@@ -194,12 +191,11 @@ syscall_handler (struct intr_frame *f)
             munmap((mapid_t)*(int *)args[0]);
             release_args(syscall, 1, args);
             break;
-        /** NEW ADDED HERE **/
         case SYS_CHDIR: {
            void *args[1];
            get_args(syscall, 1, args);
            char *buff_ptr = (char *)*(int *)args[0];
-           validate_addr(buff_ptr, f->esp, /* Writeable */ false);
+           validate_addr(buff_ptr, f->esp, false);
            f->eax = chdir(buff_ptr);
            release_args(syscall, 1, args);
            break;
@@ -208,7 +204,7 @@ syscall_handler (struct intr_frame *f)
            void *args[1];
            get_args(syscall, 1, args);
            char *buff_ptr = (char *)*(int *)args[0];
-           validate_addr(buff_ptr, f->esp, /* Writeable */ false);
+           validate_addr(buff_ptr, f->esp, false);
            f->eax = mkdir(buff_ptr);
            release_args(syscall, 1, args);
            break;
@@ -306,9 +302,9 @@ void exit (int status) {
     delete_exe_to_threads_entry(curr);
     lock_release(&ht_exec_to_threads_lock);
 
-    //lock_acquire(&filesys_lock);
+    
     file_close(curr->exe);
-    //lock_release(&filesys_lock);
+    
 
     hash_destroy(&curr->page_table, remove_page);
 
@@ -331,9 +327,9 @@ void exit (int status) {
 }
 
 tid_t exec (const char *file_name){
-    //lock_acquire(&filesys_lock);
+    
     tid_t pid = process_execute(file_name);
-    //lock_release(&filesys_lock);
+    
     return pid;
 }
 
@@ -343,9 +339,9 @@ int wait (tid_t pid) {
 
 bool create (const char *file_name, unsigned initial_size) {
     if(!file_name) exit(-1);
-    //lock_acquire(&filesys_lock);
+    
     int result = filesys_create(file_name, initial_size,false);
-    //lock_release(&filesys_lock);
+    
     return result;
 }
 
@@ -354,12 +350,11 @@ int open (const char *file_name) {
     if (hash_size(&curr->fds) == MAX_OPEN_FILES)
         return -1;
 
-    /** NEW ADDED HERE **/
     struct file* f_ptr = NULL;
     struct dir* dir_ptr = NULL;
     bool isdir = false;
 
-    //lock_acquire(&filesys_lock);
+    
     filesys_open(file_name, &f_ptr, &dir_ptr, &isdir);
 
     if (!isdir) {
@@ -376,18 +371,7 @@ int open (const char *file_name) {
     fd_open->dir_ptr = dir_ptr;
     fd_open->isdir = isdir;
     insert_fd(curr, fd_open);
-    return fd_open->fid; 
-    /*
-    if (!f_ptr){
-        lock_release(&filesys_lock);
-        return -1;
-    }
-    lock_release(&filesys_lock);
-    struct file_desc *fd_open = malloc(sizeof(struct file_desc));
-    fd_open->fptr = f_ptr;
-    insert_fd(curr, fd_open);
-    return fd_open->fid; 
-    */
+    return fd_open->fid;    
 }
 
 void insert_fd(struct thread *t, struct file_desc *fd) {
@@ -399,20 +383,16 @@ void insert_fd(struct thread *t, struct file_desc *fd) {
 }
 
  bool remove (const char *file_name) {
-    //lock_acquire(&filesys_lock);
     bool result = filesys_remove(file_name);
-    //lock_release(&filesys_lock);
     return result;
  }
 
  int filesize (int fd) {
-    // lock_acquire(&filesys_lock);
     struct file *fptr = get_file_by_id(fd);
     int fsize = -1;
     if (fptr != NULL) {
         fsize = file_length(fptr);
      }
-     // lock_release(&filesys_lock);
      return fsize;
   }
 
@@ -428,7 +408,6 @@ void insert_fd(struct thread *t, struct file_desc *fd) {
     return fd_ptr->fptr;
  }
 
-/** NEW ADDED HERE **/
  static struct dir * get_thread_dir_by_fd (int fd) {
     struct file_desc f_desc;
     f_desc.fid = fd;
@@ -460,14 +439,14 @@ int read (int fd, void *buffer, unsigned length) {
         release_buf(buffer, length);
         return length;
     } else {
-        // lock_acquire(&filesys_lock);
+        
         struct file* fptr = get_file_by_id(fd);
         if (fptr == NULL){
-            // lock_release(&filesys_lock);
+            
             return -1;
         }
         int result = file_read(fptr, buffer, length);
-        // lock_release(&filesys_lock);
+        
         return result;
     }
 
@@ -491,14 +470,13 @@ int write (int fd, const void *buffer, unsigned length) {
     } else {
         struct file *f_ptr = get_file_by_id(fd);
         if (f_ptr) {
-            // lock_acquire(&filesys_lock);
+            
             length = file_write(f_ptr, buffer, length);
-            // lock_release(&filesys_lock);
+            
             release_buf(buffer, length);
             return length;
         };
         return -1;
-        // return 0;
     }
 }
 
@@ -517,44 +495,32 @@ void close (int fid) {
         } else {
             dir_close(fdp->dir_ptr);
         }
-
-        // lock_acquire(&filesys_lock);
-        // file_close(fdp->fptr);
-        // lock_release(&filesys_lock);
         free(fdp);
     } 
 }
 
 void seek (int fd, unsigned pos) {
-    // lock_acquire(&filesys_lock);
     struct file *fptr = get_file_by_id(fd);
     if (!fptr){
-        // lock_release(&filesys_lock);
         return;
     }
     file_seek(fptr, pos);
-    // lock_release(&filesys_lock);
+    
 }
 
 unsigned tell (int fd) {
-    // lock_acquire(&filesys_lock);
     struct file* fptr = get_file_by_id(fd);
     if (!fptr){
-        // lock_release(&filesys_lock);
         return -1;
     }
     unsigned pos = file_tell(fptr);
-    // lock_release(&filesys_lock);
     return pos;
 }
 
 void remove_fds (struct hash_elem *e, void *aux) {
-    // struct lock *fd_lock = (struct lock *) aux;
     struct file_desc *fdp = hash_entry (e, struct file_desc, elem);
-    // lock_acquire(fd_lock);
     file_close(fdp->fptr);
     dir_close(fdp->dir_ptr);
-    // lock_release(fd_lock);
     free(fdp);
 }
 
@@ -607,9 +573,9 @@ mapid_t mmap (int fd, void *addr) {
         exist_cnt++;
     }
 
-    // lock_acquire(&filesys_lock);
+    
     struct file *re_fptr = file_reopen(fptr);
-    // lock_release(&filesys_lock);
+    
     if(!re_fptr) return MAP_FAILED;
 
     int offset = 0;
@@ -646,7 +612,6 @@ mapid_t mmap (int fd, void *addr) {
     return new_addr->mapid;
 }
 
-/* Unmaps the id_addr designated by id_addr. */
 void munmap (mapid_t id) {
     struct thread *curr = thread_current();
     struct id_addr new_addr;
@@ -677,15 +642,22 @@ void munmap_helper (struct id_addr *id, struct thread *t) {
     hash_delete(&t->ht_id_addr, &id->elem);
 }
 
+static int inumber (int fd) {
+   if (!is_fd_dir(fd)) {
+        struct file *file = get_file_by_id(fd);
+        ASSERT (file != NULL);
+        return inode_get_inumber(file_get_inode(file));
+   } else {
+        struct dir *dir = get_thread_dir_by_fd(fd);
+        ASSERT (dir != NULL);
+        return inode_get_inumber(dir_get_inode(dir));
+   }
+}
+
 static bool chdir (const char *dir) {
    bool success = filesys_cd(dir);
    return success;
  }
-
-static bool mkdir (const char *dir) {
-   bool success = filesys_create(dir, 2 * SIZE_DIR, true);
-   return success;
-}
 
 static bool readdir (int fd, char *name) {
     if (!is_fd_dir(fd)) return false;
@@ -700,18 +672,13 @@ static bool readdir (int fd, char *name) {
     return true;
 }
 
+static bool mkdir (const char *dir) {
+   bool success = filesys_create(dir, 2 * SIZE_DIR, true);
+   return success;
+}
+
 static bool isdir (int fd) {
    return is_fd_dir(fd);
 }
 
-static int inumber (int fd) {
-   if (!is_fd_dir(fd)) {
-        struct file *file = get_file_by_id(fd);
-        ASSERT (file != NULL);
-        return inode_get_inumber(file_get_inode(file));
-   } else {
-        struct dir *dir = get_thread_dir_by_fd(fd);
-        ASSERT (dir != NULL);
-        return inode_get_inumber(dir_get_inode(dir));
-   }
-}
+

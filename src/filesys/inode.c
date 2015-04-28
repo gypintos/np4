@@ -15,8 +15,6 @@
 #define N_DIR_BLK 12
 #define N_IN_DIR_BLK 1
 #define N_DOU_IN_DIR_BLK 1
-// #define DIRECT_INDEX 0
-// #define INDIRECT_INDEX N_DIR_BLK
 #define IN_DIR_END N_DIR_BLK + N_IN_DIR_BLK
 #define N_PTR_INODE IN_DIR_END + N_DOU_IN_DIR_BLK
 #define N_PTR_IN_DIR_BLK 128
@@ -49,9 +47,6 @@ struct inode
     int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
     struct lock in_lock;                  
   };
-
-/* List of open inodes, so that opening a single inode twice
-   returns the same `struct inode'. */
 static struct list open_inodes;
 
 bool inode_allocate(struct inode_disk *disk_inode, off_t length);
@@ -62,8 +57,6 @@ size_t inode_inc_dou_indir_blk (struct inode_disk *i_d, size_t sectors);
 size_t inode_inc_nest_blk (struct inode_disk *i_d, size_t sectors,
                            struct indir_blk *block);
 
-/* Returns the number of sectors to allocate for an inode SIZE
-   bytes long. */
 static inline size_t bytes_to_sectors (off_t size)
 {
   return DIV_ROUND_UP (size, BLOCK_SECTOR_SIZE);
@@ -155,23 +148,9 @@ inode_create (block_sector_t sector, off_t length)
 
   ASSERT (length >= 0);
 
-  /* If this assertion fails, the inode structure is not exactly
-     one sector in size, and you should fix that. */
   ASSERT (sizeof *disk_inode == BLOCK_SECTOR_SIZE);
 
   disk_inode = calloc (1, sizeof *disk_inode);
-  // if (disk_inode != NULL)
-  //   {
-  //     disk_inode->magic = INODE_MAGIC;
-  //     if(length == 0 || inode_allocate(disk_inode, length)) {
-  //       disk_inode->length = length;
-  //       buf_to_cache(sector, disk_inode, 0, BLOCK_SECTOR_SIZE);
-  //       success = true;
-  //     }
-  //     free (disk_inode);
-  //   }
-  // return success;
-
 
   if (disk_inode){
     disk_inode->magic = INODE_MAGIC;
@@ -195,8 +174,6 @@ inode_open (block_sector_t sector)
 {
   struct list_elem *e;
   struct inode *inode;
-
-  /* Check whether this inode is already open. */
   for (e = list_begin (&open_inodes); e != list_end (&open_inodes);
        e = list_next (e)) 
     {
@@ -207,13 +184,9 @@ inode_open (block_sector_t sector)
           return inode; 
         }
     }
-
-  /* Allocate memory. */
   inode = malloc (sizeof *inode);
   if (inode == NULL)
     return NULL;
-
-  /* Initialize. */
   list_push_front (&open_inodes, &inode->elem);
   inode->sector = sector;
   inode->open_cnt = 1;
@@ -300,16 +273,13 @@ inode_read_at (struct inode *inode, void *buffer, off_t size, off_t offset)
 
   while (size > 0)
     {
-      /* Disk sector to read, starting byte offset within sector. */
       sec_id = byte_to_sector (inode, offset, 0);
       int sector_ofs = offset % BLOCK_SECTOR_SIZE;
 
-      /* Bytes left in inode, bytes left in sector, lesser of the two. */
       off_t inode_left = len - offset;
       int sector_left = BLOCK_SECTOR_SIZE - sector_ofs;
       int min_left = inode_left < sector_left ? inode_left : sector_left;
 
-      /* Number of bytes to actually copy out of this sector. */
       int chunk_size = size < min_left ? size : min_left;
       if (chunk_size <= 0)
         break;
@@ -348,7 +318,6 @@ inode_write_at (struct inode *inode, const void *buffer, off_t size,
   if (inode->deny_write_cnt)
     return 0;
   if(offset + size > inode_length(inode)) {
-    /* File growth */
     if (lock_acquired == false){
       inode_lock_acquire(inode);
     }
@@ -375,7 +344,6 @@ inode_write_at (struct inode *inode, const void *buffer, off_t size,
       int sector_left = BLOCK_SECTOR_SIZE - sector_ofs;
       int min_left = inode_left < sector_left ? inode_left : sector_left;
 
-      /* Number of bytes to actually write into this sector. */
       int chunk_size = size < min_left ? size : min_left;
       if (chunk_size <= 0)
         break;
@@ -439,9 +407,6 @@ inode_length (const struct inode *inode)
   return res;
 }
 
-
-/* Allocate indirect blocks for inode.
-   Return remaining size of sectors that need to allocate */
 size_t
 inode_inc_indir_blk (struct inode_disk *i_d, size_t sec_cnt)
 {
@@ -502,25 +467,19 @@ inode_inc_nest_blk (struct inode_disk *i_d, size_t sec_cnt,
   return sec_cnt;
 }
 
-size_t
-inode_inc_dou_indir_blk (struct inode_disk *i_d, size_t sec_cnt)
+void inode_lock_acquire (struct inode *inode)
 {
-  struct indir_blk b;
-  if (i_d->indir_ptr != 0 || i_d->d_indir_ptr != 0){
-    get_sec_from_cache(i_d->ptr[i_d->dir_ptr], &b, 0,BLOCK_SECTOR_SIZE);
-  } else {
-    free_map_allocate(1, &i_d->ptr[i_d->dir_ptr]);
-  }
-  for (;i_d->indir_ptr < N_PTR_IN_DIR_BLK;){
-    sec_cnt = inode_inc_nest_blk(i_d, sec_cnt, &b);
-    if (sec_cnt == 0) break;
-  }
-
-  buf_to_cache(i_d->ptr[i_d->dir_ptr], &b, 0,BLOCK_SECTOR_SIZE);
-  return sec_cnt;
+  lock_acquire (&inode->in_lock);
 }
 
-/* Allocate inode_disk with size as LENGTH*/
+
+void inode_lock_release (struct inode *inode)
+{
+  lock_release (&inode->in_lock);
+}
+
+
+
 bool
 inode_allocate(struct inode_disk *i_d, off_t length)
 {
@@ -553,21 +512,24 @@ inode_allocate(struct inode_disk *i_d, off_t length)
   return size == 0;
 }
 
-/* Deallocate all sectors in an indirect block*/
-void
-inode_dealloc_helper (block_sector_t *sector, size_t size)
+size_t
+inode_inc_dou_indir_blk (struct inode_disk *i_d, size_t sec_cnt)
 {
   struct indir_blk b;
-  get_sec_from_cache(*sector, &b, 0, BLOCK_SECTOR_SIZE);
-  int i = 0; 
-  for (; i<size; i++){
-    free_map_release(b.ptr[i], 1);
+  if (i_d->indir_ptr != 0 || i_d->d_indir_ptr != 0){
+    get_sec_from_cache(i_d->ptr[i_d->dir_ptr], &b, 0,BLOCK_SECTOR_SIZE);
+  } else {
+    free_map_allocate(1, &i_d->ptr[i_d->dir_ptr]);
   }
-  free_map_release(*sector, 1);
+  for (;i_d->indir_ptr < N_PTR_IN_DIR_BLK;){
+    sec_cnt = inode_inc_nest_blk(i_d, sec_cnt, &b);
+    if (sec_cnt == 0) break;
+  }
 
+  buf_to_cache(i_d->ptr[i_d->dir_ptr], &b, 0,BLOCK_SECTOR_SIZE);
+  return sec_cnt;
 }
 
-/* Deallocate inode */
 void
 inode_deallocate (struct inode_disk *i_d)
 {
@@ -613,13 +575,19 @@ inode_deallocate (struct inode_disk *i_d)
   }
 }
 
-void inode_lock_acquire (struct inode *inode)
+void
+inode_dealloc_helper (block_sector_t *sector, size_t size)
 {
-  lock_acquire (&inode->in_lock);
+  struct indir_blk b;
+  get_sec_from_cache(*sector, &b, 0, BLOCK_SECTOR_SIZE);
+  int i = 0; 
+  for (; i<size; i++){
+    free_map_release(b.ptr[i], 1);
+  }
+  free_map_release(*sector, 1);
+
 }
 
 
-void inode_lock_release (struct inode *inode)
-{
-  lock_release (&inode->in_lock);
-}
+
+
