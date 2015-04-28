@@ -191,47 +191,41 @@ syscall_handler (struct intr_frame *f)
             munmap((mapid_t)*(int *)args[0]);
             release_args(syscall, 1, args);
             break;
-        case SYS_CHDIR: {
-           // void *args[1];
+        case SYS_CHDIR: 
            get_args(syscall, 1, args);
            buf = (char *)*(int *)args[0];
            validate_addr(buf, f->esp, false);
            f->eax = chdir(buf);
            release_args(syscall, 1, args);
            break;
-       }
-       case SYS_MKDIR: {
-           // void *args[1];
+       
+       case SYS_MKDIR: 
            get_args(syscall, 1, args);
            buf = (char *)*(int *)args[0];
            validate_addr(buf, f->esp, false);
            f->eax = mkdir(buf);
            release_args(syscall, 1, args);
            break;
-       }
-       case SYS_READDIR: {
-           // void *args[2];
+       
+       case SYS_READDIR: 
            get_args(syscall, 2, args);
            buf = (char *)*(int *)args[1];
            validate_buf(buf, READDIR_MAX_LEN + 1, f->esp, true);
            f->eax = readdir(*(int *)args[0], buf);
            release_args(syscall, 2, args);
            break;
-       }
-       case SYS_ISDIR: {
-           // void *args[1];
+       
+       case SYS_ISDIR: 
            get_args(syscall, 1, args);
            f->eax = isdir(*(int *)args[0]);
            release_args(syscall, 1, args);
            break;
-       }
-       case SYS_INUMBER: {
-           // void *args[1];
+       
+       case SYS_INUMBER: 
            get_args(syscall, 1, args);
            f->eax = inumber(*(int *)args[0]);
            release_args(syscall, 1, args);
            break;
-       } 
     }
 }
 
