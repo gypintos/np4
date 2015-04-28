@@ -683,7 +683,7 @@ static bool chdir (const char *dir) {
  }
 
 static bool mkdir (const char *dir) {
-   bool success = filesys_create(dir, 2 * DIR_ENTRY, true);
+   bool success = filesys_create(dir, 2 * SIZE_DIR, true);
    return success;
 }
 
