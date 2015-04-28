@@ -6,7 +6,6 @@
 #define READDIR_MAX_LEN 14
 
 typedef int mapid_t;
-// struct lock filesys_lock;
 
 void syscall_init (void);
 void halt (void);

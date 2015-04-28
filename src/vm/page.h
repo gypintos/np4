@@ -12,7 +12,7 @@ struct hash ht_exec_to_threads;
 struct lock ht_exec_to_threads_lock;		 
 
 struct exe_to_threads {
-  block_sector_t inumber;       /* Executable file inumber */
+  block_sector_t inumber;       
   struct hash_elem hash_elem;
   struct list threads;
 };

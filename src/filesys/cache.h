@@ -25,15 +25,15 @@ struct condition *pre_read_cond_ptr;
 
 struct lock *pre_read_lock_ptr;
 
-void cache_buf_init(void);
+
 void all_cache_to_disk(bool exiting);
+void cache_buf_init(void);
 void get_sec_from_cache (block_sector_t sector_idx, void *buffer,
 				  int sector_ofs, int chunk_size);
-void
-buf_to_cache (block_sector_t sector_idx, const void *buffer, int sector_ofs,
-				 int chunk_size);
 void thread_cache_to_disk (void);
-
 void *get_meta_inode (block_sector_t sector_idx);
 void free_meta_inode (block_sector_t sector_idx, bool dirty);
 void cache_exit (void);
+void
+buf_to_cache (block_sector_t sector_idx, const void *buffer, int sector_ofs,
+				 int chunk_size);

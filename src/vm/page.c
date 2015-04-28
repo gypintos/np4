@@ -150,10 +150,8 @@ bool get_page_from_file (uint8_t *kaddr, struct file *file,
         off_t off, uint32_t pr_bytes, uint32_t pz_bytes)
 {
   ASSERT((pz_bytes + pr_bytes) % PGSIZE == 0);
-  // lock_acquire(&filesys_lock);
   file_seek(file, off);
   int fr_bytes = file_read(file, kaddr, pr_bytes);
-  // lock_release(&filesys_lock);
 
   if (fr_bytes == pr_bytes){
     memset(kaddr + pr_bytes, 0, pz_bytes);
@@ -174,10 +172,8 @@ void free_mmap_page_to_file (struct page *p) {
       fm->isPinned = true;
       lock_release(&frame_table_lock);
 
-      // lock_acquire(&filesys_lock);
       uint32_t fw_bytes = file_write_at(p->file, p->kaddr, p->read_bytes, p->offset);
       ASSERT(fw_bytes == p->read_bytes);
-      // lock_release(&filesys_lock);
 
       lock_acquire(&frame_table_lock);
       fm->isPinned = false;
@@ -195,9 +191,7 @@ void write_mmap_page_to_file (struct page *p) {
   struct frame* fm = find_fm(p->kaddr);
   ASSERT(fm);
   if (if_fm_dirty(fm)){
-    // lock_acquire(&filesys_lock);
     uint32_t fw_bytes = file_write_at(p->file, p->kaddr, p->read_bytes, p->offset);
-    // lock_release(&filesys_lock);
   } 
 }
 
@@ -280,7 +274,6 @@ void insert_exe_to_threads_entry(struct thread *t, struct file *file)
     struct exe_to_threads* new_etp = malloc(sizeof(struct exe_to_threads));
     new_etp->inumber = inumber;
     list_init(&new_etp->threads);
-    // strlcpy(new_etp->exe_key, t->name, sizeof(new_etp->exe_key));
     list_push_back(&new_etp->threads, &t->exec_elem);
     hash_insert(&ht_exec_to_threads, &new_etp->hash_elem);
   } else {

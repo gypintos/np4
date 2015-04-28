@@ -122,7 +122,6 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
-  /** NEW ADDED HERE **/
   initial_thread->cur_dir = NULL;
 }
 
@@ -140,8 +139,8 @@ thread_start (void)
   sema_init (&idle_started, 0);
 
   thread_create ("idle", PRI_MIN, idle, &idle_started);
-/** NEW ADDED HERE **/
-  thread_create ("cache-2-disk", PRI_DEFAULT, thread_cache_to_disk, NULL);
+
+  thread_create ("cache-disk", PRI_DEFAULT, thread_cache_to_disk, NULL);
 
   /* Start preemptive thread scheduling. */
   intr_enable ();
@@ -156,8 +155,6 @@ void
 thread_tick (void)
 {
   struct thread *t = thread_current ();
-
-  /* Update statistics. */
   if (t == idle_thread)
     idle_ticks++;
 #ifdef USERPROG
@@ -166,8 +163,6 @@ thread_tick (void)
 #endif
   else
     kernel_ticks++;
-
-  /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
     intr_yield_on_return ();
 }
@@ -207,22 +202,18 @@ thread_create (const char *name, int priority,
 
   ASSERT (function != NULL);
 
-  /* Allocate thread. */
   t = palloc_get_page (PAL_ZERO);
   if (t == NULL)
     return TID_ERROR;
 
-  /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
 
-  /* Setup related info for thread*/
   t->parent = thread_current();
   if (!hash_empty( &t->parent->children )) {
     struct child_info ci;
     ci.cid = TID_ERROR;
     struct hash_elem *ect = hash_delete(&t->parent->children, &ci.elem);
-    /** NEW ADDED HERE **/
     if (ect != NULL){
       struct child_info *ci_ = hash_entry(ect, struct child_info, elem);
       ci_->cid = tid;
@@ -239,18 +230,6 @@ thread_create (const char *name, int priority,
         t->cur_dir = NULL;
       }
     }
-
-/*
-    struct child_info *ci_ = hash_entry(ect, struct child_info, elem);
-    ci_->cid = tid;
-    ci_->cthread = thread_current();
-    hash_insert(&t->parent->children, &ci_->elem);
-    hash_init(&t->children, child_info_hash_func, cmp_child_info_less, NULL);
-    hash_init(&t->fds, file_desc_hash_func, cmp_file_desc_less, &filesys_lock);
-    hash_init(&t->ht_id_addr, id_addr_hash_func, cmp_id_addr_less, NULL);
-    t->fd_seq = 1;
-    t->id_addrs_seq = 1;
-*/
   }
 
   /* Init supplemental page table */

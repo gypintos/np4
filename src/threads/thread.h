@@ -189,10 +189,8 @@ struct file_desc {
   int fid;                  
   struct  file *fptr;       
   struct hash_elem elem;
-
-/** NEW ADDED HERE **/
-  struct dir *dir_ptr;        /* Pointer to the opened directory */
-  bool isdir;                 /* is directory? */
+  struct dir *dir_ptr;  
+  bool isdir;       
 
 };
 
