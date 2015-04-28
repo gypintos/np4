@@ -86,11 +86,29 @@ struct file_desc {
   ...
 };
 
+Initial size of directory entry
+#define SIZE_DIR 24
 
 ---- ALGORITHMS ----
 
 >> B2: Describe your code for traversing a user-specified path.  How
 >> do traversals of absolute and relative paths differ?
+We parse the user-specifed path case by case:
+if it start with '/', then this path will be absolute path, we will 
+start from root directory, then token by token to check if that token 
+is a valid subdirectory. Once the token represent a invalid directory,
+we quit
+
+if it start with '.', then this path will start from current directory,
+check each token represent a valid directory which is similar to above 
+description.
+
+if it start with '..', we will first check if it has a valid parent directory,
+then token by token to check if it represent a valid directory.
+
+for token like '..' we will first check if parent directory exist, then
+go up one level.
+
 
 ---- SYNCHRONIZATION ----
 
@@ -99,10 +117,17 @@ struct file_desc {
 >> should succeed, as should only one of two simultaneous attempts to
 >> create a file with the same name, and so on.
 
+We use inode lock for that directory to avoid race condition on modifying
+directory.
+
+
 >> B5: Does your implementation allow a directory to be removed if it
 >> is open by a process or if it is in use as a process's current
 >> working directory?  If so, what happens to that process's future
 >> file system operations?  If not, how do you prevent it?
+
+We do not allow this happen. To prevent it, we check open count member of
+the inode of that directory, if this member is greate than 1, it can't be deleted
 
 ---- RATIONALE ----
 
