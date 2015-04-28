@@ -68,6 +68,25 @@ Feifei Guo <feitwo@ccs.neu.edu>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+Add isdir member to dir_entry to indicate that if it is a directory
+struct dir_entry 
+  {
+  	....
+    bool isdir;                         /* Directory or not */
+    ...
+
+  };
+
+Add two member: one is a poiter to the directory, the other indicates that
+if it is a directory
+struct file_desc {
+  ...
+  struct dir *dir_ptr;        
+  bool isdir;                 
+  ...
+};
+
+
 ---- ALGORITHMS ----
 
 >> B2: Describe your code for traversing a user-specified path.  How
@@ -99,14 +118,88 @@ Feifei Guo <feitwo@ccs.neu.edu>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+Cache element of cache talbe
+	struct cache_elem {
+		block_sector_t secId;
+		void *ch_addr;	
+		bool isDirty;					
+		bool isUsed;				
+		unsigned pin_cnt;			
+		struct hash_elem buf_hash_elem;	
+		struct hash_elem evic_buf_hash_elem;	
+	};
+
+Cache hash table
+	struct hash struct hash buf_ht;
+
+Lock of cash table
+	struct hash buf_ht;
+
+Bitmap to manage cache usage
+	struct bitmap *c_map;
+
+lock for c_map
+	struct lock c_map_lock;
+
+Hash iterator for buf_ht
+	struct hash_iterator c_it;
+
+
+Condition variable for available cahce element
+	struct condition cond_pin;
+
+Buffer size of block
+	#define BUF_SIZE_BLOCK 64
+
+Buffer size of page
+	#define BUF_SIZE_PAGE
+
+Eviction hash table that contains cache element from buf_ht
+	struct hash evic_buf_ht;
+
+Variable for clock hand algorithm
+	void *buf_clock_curr;
+	void *buf_clock_min;
+	void *buf_clock_max;
+
+List of pre read sector as a FIFO queue
+	struct list pre_read_que;
+ 
+Elem of pre_read_que  
+	struct pre_read_elem {
+		block_sector_t sec_id;		
+		struct list_elem elem;
+	};	
+
+Lock for pre_read_que
+	struct lock pre_read_lock;
+
+Condition variable for pre_read_que
+	struct condition pre_read_cond;	
+
 ---- ALGORITHMS ----
 
 >> C2: Describe how your cache replacement algorithm chooses a cache
 >> block to evict.
 
+We use clock algorithm to choose cache block to evict. In each step,
+we check the status of the cache block: written, used by thread, number 
+of accesed time and etc. Base on these variable, we select or move on to
+the next element. If there is no available cache block to be evicted, 
+then wait for contition variable to be greater than 0
+
 >> C3: Describe your implementation of write-behind.
 
+Modification of file result dirty member of that cache element ot be true. 
+Also the file meta data cheanges. Nothing more until cache eviction function or
+file system finish procedure is invoked. At that time, modified cache block 
+will be written back to disk
+
 >> C4: Describe your implementation of read-ahead.
+A thread pool was allocated for pre read threads. Every time when there is a 
+task to read/write some sector from/to disk, the sector behind last sector read, will 
+be read in and store as a element in pre_read_que. It make a signal to the thread
+pool for which thread needed.
 
 ---- SYNCHRONIZATION ----
 
@@ -114,13 +207,35 @@ Feifei Guo <feitwo@ccs.neu.edu>
 >> buffer cache block, how are other processes prevented from evicting
 >> that block?
 
+The member pin_cnt will help to prevent cache block from evictiong. 
+Everytime when cache data is accessed, the pin_cnt member will be incrementd. 
+cache block which has pin_cnt more that 0 will not be evicted.
+
 >> C6: During the eviction of a block from the cache, how are other
 >> processes prevented from attempting to access the block?
+
+Cache element will be deleted from cache table once it is chosen, which make 
+it unreachable from other process.
 
 ---- RATIONALE ----
 
 >> C7: Describe a file workload likely to benefit from buffer caching,
 >> and workloads likely to benefit from read-ahead and write-behind.
+
+For buffer caching, if a process will repeatedly modify data in one sector,
+it will benefit from using buffer caching. All change to that file will write 
+to buffer cache until the cahce block is being evicted. This save a lot of time
+for sector reading/write on disk.
+
+For read_ahead, if a task is to write some data to a file, it is likely that 
+it will need the next sector for accessing. read-ahead at this time will be useful
+since the sector is already loaded in advance.
+
+For write-behind, some task may just modify few changes to a file, in this case,
+write hehind decreate the overhead of write sector to disk and read it back again in
+a short time period.
+
+
 
 			   SURVEY QUESTIONS
 			   ================
